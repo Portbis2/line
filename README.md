@@ -1,0 +1,1 @@
+# HASSE LINE Chatbot System\n\nLINE chatbot for HASSE Space School admissions.\n\n## Files\n- `workflows/main-conversation.json` — n8n workflow\n- `chatbot/router-code.js` — Chatbot Router logic\n- `chatbot/faq-summary.md` — FAQ keywords\n- `logs/updates.md` — Change log\n\nAuto-backed up every Sunday.
