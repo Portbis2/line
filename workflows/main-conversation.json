@@ -1,0 +1,2245 @@
+{
+  "updatedAt": "2026-04-08T15:26:57.054Z",
+  "createdAt": "2026-03-24T13:29:02.451Z",
+  "id": "fFnV9UqWZ4q4CtjP",
+  "name": "LINE → GHL Taiwan Lead + Automation Trigger",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "line-lead",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        208,
+        320
+      ],
+      "id": "0a92285c-6075-45c4-bfd4-203d45e5e3a2",
+      "name": "Webhook1",
+      "webhookId": "5c2365ad-80f3-40ed-b167-db2e8dd7f7ce"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.line.me/v2/bot/profile/{{ $json.body.events ? $json.body.events[0].source.userId : ($json.body.userId || '') }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "id": "get-line-profile",
+      "name": "Get LINE Profile",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        336,
+        320
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "vLX9ZgLfdMvCBu7G",
+          "name": "LINE Bot Token"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "firstName",
+              "value": "={{ $json.displayName || $('Webhook1').item.json.body.displayName || $('Webhook1').item.json.body.name || 'LINE Lead' }}",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "displayName",
+              "value": "={{ $json.displayName || $('Webhook1').item.json.body.displayName || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "3",
+              "name": "lineUserId",
+              "value": "={{ $('Webhook1').item.json.body.events ? $('Webhook1').item.json.body.events[0].source.userId : ($('Webhook1').item.json.body.userId || $('Webhook1').item.json.body.lineId || '') }}",
+              "type": "string"
+            },
+            {
+              "id": "4",
+              "name": "phone",
+              "value": "={{ $('Webhook1').item.json.body.phone || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "5",
+              "name": "email",
+              "value": "={{ $('Webhook1').item.json.body.email || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "6",
+              "name": "program",
+              "value": "={{ $('Webhook1').item.json.body.program || ($('Webhook1').item.json.body.events?.[0]?.message?.text?.toLowerCase().includes('jss') ? 'JSS' : ($('Webhook1').item.json.body.events?.[0]?.message?.text?.toLowerCase().includes('國中') ? 'JSS' : ($('Webhook1').item.json.body.events?.[0]?.message?.text?.toLowerCase().includes('junior') ? 'JSS' : 'HSS'))) }}",
+              "type": "string"
+            },
+            {
+              "id": "7",
+              "name": "messageText",
+              "value": "={{ $('Webhook1').item.json.body.events ? $('Webhook1').item.json.body.events[0].message?.text : ($('Webhook1').item.json.body.message || '') }}",
+              "type": "string"
+            },
+            {
+              "id": "8",
+              "name": "profilePicUrl",
+              "value": "={{ $json.pictureUrl || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "9",
+              "name": "eventType",
+              "value": "={{ $('Webhook1').item.json.body.events ? $('Webhook1').item.json.body.events[0].type : 'api' }}",
+              "type": "string"
+            },
+            {
+              "id": "10",
+              "name": "replyToken",
+              "value": "={{ $('Webhook1').item.json.body.events ? $('Webhook1').item.json.body.events[0].replyToken : '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "parse-data",
+      "name": "Parse LINE Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        528,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "reply-check",
+              "leftValue": "={{ $json.replyToken }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "has-reply-token",
+      "name": "Has Reply Token?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        720,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/reply",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"replyToken\": \"{{ $('Parse LINE Data').item.json.replyToken }}\",\n  \"messages\": [\n    {\n      \"type\": \"text\",\n      \"text\": \"{{ $('Parse LINE Data').item.json.displayName || '你' }}好！感謝你對 HASSE 太空學校的關注 🚀\\n\\n2026 暑期梯次（7/7-7/18）正在接受報名。\\n\\n我們的顧問團隊會盡快與你聯繫，協助你了解最適合的課程。\\n\\n📞 台灣專線：02-8780-8650\\n🌐 HSS：tcghss1.spaceschool.org\\n🌐 JSS：tcgjss1.spaceschool.org\"\n    }\n  ]\n}",
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "id": "reply-line-user",
+      "name": "Reply to LINE User",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        672
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "vLX9ZgLfdMvCBu7G",
+          "name": "LINE Bot Token"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{ $json.program }}",
+              "rightValue": "HSS",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "route-program",
+      "name": "HSS or JSS?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        704,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/contacts/upsert",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"firstName\": \"{{ $('Parse LINE Data').item.json.displayName || $('Parse LINE Data').item.json.firstName }}\",\n  \"phone\": \"{{ $('Parse LINE Data').item.json.phone }}\",\n\"email\": \"{{ $('Parse LINE Data').item.json.email || $('Parse LINE Data').item.json.lineUserId + '@line.placeholder' }}\",\n  \"source\": \"LINE - TC HSS Taiwan\",\n  \"tags\": [\"line-lead\", \"[2026] taiwan\", \"[hss] 2026-tw\", \"[hss] 2026-s\", \"tc-funnel\"],\n  \"locationId\": \"A0BcGX8PnPccQLUEzdm6\",\n  \"customFields\": [\n    {\"key\": \"line_user_id\", \"value\": \"{{ $('Parse LINE Data').item.json.lineUserId }}\"}\n  ]\n}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "create-hss-contact",
+      "name": "Upsert GHL Contact (HSS)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        944,
+        -32
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "eIGPaCqa6w5u56Pr",
+          "name": "GHL API Key - LINE TC"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/contacts/upsert",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"firstName\": \"{{ $('Parse LINE Data').item.json.displayName || $('Parse LINE Data').item.json.firstName }}\",\n  \"phone\": \"{{ $('Parse LINE Data').item.json.phone }}\",\n  \"email\": \"{{ $('Parse LINE Data').item.json.email || $('Parse LINE Data').item.json.lineUserId + '@line.placeholder' }}\",\n  \"source\": \"LINE - TC JSS Taiwan\",\n  \"tags\": [\"line-lead\", \"[2026] taiwan\", \"[jss] 2026-tw\", \"[jss] 2026-s\", \"tc-funnel\"],\n  \"locationId\": \"A0BcGX8PnPccQLUEzdm6\",\n  \"customFields\": [\n    {\"key\": \"line_user_id\", \"value\": \"{{ $('Parse LINE Data').item.json.lineUserId }}\"}\n  ]\n}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "create-jss-contact",
+      "name": "Upsert GHL Contact (JSS)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        944,
+        448
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "eIGPaCqa6w5u56Pr",
+          "name": "GHL API Key - LINE TC"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://services.leadconnectorhq.com/opportunities/upsert",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"pipelineId\": \"249OcrNHgsq4FtnvfdwS\",\n  \"pipelineStageId\": \"c3943031-557c-4e2f-9385-77491f5e1218\",\n  \"locationId\": \"A0BcGX8PnPccQLUEzdm6\",\n  \"contactId\": \"{{ $('Upsert GHL Contact (HSS)').item.json.contact.id }}\",\n  \"name\": \"{{ $('Parse LINE Data').item.json.displayName || $('Parse LINE Data').item.json.firstName }} - LINE HSS\",\n  \"status\": \"open\",\n  \"source\": \"LINE\"\n}",
+        "options": {}
+      },
+      "id": "create-hss-opportunity",
+      "name": "Create HSS Opportunity",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1136,
+        16
+      ],
+      "notesInFlow": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "eIGPaCqa6w5u56Pr",
+          "name": "GHL API Key - LINE TC"
+        }
+      },
+      "notes": "Pipeline: 2026 Space School → Show Interest"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://services.leadconnectorhq.com/opportunities/upsert",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"pipelineId\": \"249OcrNHgsq4FtnvfdwS\",\n  \"pipelineStageId\": \"c3943031-557c-4e2f-9385-77491f5e1218\",\n  \"locationId\": \"A0BcGX8PnPccQLUEzdm6\",\n  \"contactId\": \"{{ $('Upsert GHL Contact (JSS)').item.json.contact.id }}\",\n  \"name\": \"{{ $('Parse LINE Data').item.json.displayName || $('Parse LINE Data').item.json.firstName }} - LINE JSS\",\n  \"status\": \"open\",\n  \"source\": \"LINE\"\n}",
+        "options": {}
+      },
+      "id": "create-jss-opportunity",
+      "name": "Create JSS Opportunity",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1136,
+        368
+      ],
+      "notesInFlow": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "eIGPaCqa6w5u56Pr",
+          "name": "GHL API Key - LINE TC"
+        }
+      },
+      "notes": "Pipeline: 2026 Space School → Show Interest"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://services.leadconnectorhq.com/contacts/{{ $json.contact.id }}/workflow/afb07e57-e12a-40e0-bef2-5f927bab09fc",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{}",
+        "options": {}
+      },
+      "id": "trigger-hss-workflow",
+      "name": "Trigger GHL HSS Workflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1136,
+        160
+      ],
+      "notesInFlow": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "eIGPaCqa6w5u56Pr",
+          "name": "GHL API Key - LINE TC"
+        }
+      },
+      "continueOnFail": true,
+      "notes": "Triggers: 2026 TC General HSS Webinar"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://services.leadconnectorhq.com/contacts/{{ $json.contact.id }}/workflow/f823b2d2-93a4-48bd-8d2f-23c061dde6b7",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{}",
+        "options": {}
+      },
+      "id": "trigger-jss-workflow",
+      "name": "Trigger GHL JSS Workflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1136,
+        512
+      ],
+      "notesInFlow": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "eIGPaCqa6w5u56Pr",
+          "name": "GHL API Key - LINE TC"
+        }
+      },
+      "continueOnFail": true,
+      "notes": "Triggers: 2026 TC General JSS Webinar"
+    },
+    {
+      "parameters": {
+        "fromEmail": "service@ivicon.com",
+        "toEmail": "service@ivicon.com",
+        "subject": "=🚀 New LINE Lead: {{ $('Parse LINE Data').item.json.displayName || $('Parse LINE Data').item.json.firstName }} ({{ $('Parse LINE Data').item.json.program }})",
+        "options": {}
+      },
+      "id": "notify-team",
+      "name": "Notify Team",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1344,
+        208
+      ],
+      "webhookId": "47a441e1-5a3b-4e14-9233-9d4825f53108",
+      "credentials": {
+        "smtp": {
+          "id": "KCRNxj4GBldesU4V",
+          "name": "SMTP account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "file",
+        "owner": {
+          "__rl": true,
+          "value": "Portbis2",
+          "mode": "name"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "Morpheus-Brain",
+          "mode": "name"
+        },
+        "filePath": "=conversations/line/{{ $now.format('yyyy-MM-dd') }}/{{ $now.toMillis() }}.md",
+        "fileContent": "=# LINE Message  **Date**: {{ $now.format('yyyy-MM-dd HH:mm:ss') }} **User**: {{ $('Get LINE Profile').item.json.displayName }} **Source**: LINE HASSE @nhe2702g  ---  {{ $json.messageText }}  ---  #line #hasse #auto-logged",
+        "commitMessage": "=auto-log: LINE msg from {{ $('Get LINE Profile').item.json.displayName }}"
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1.1,
+      "position": [
+        720,
+        336
+      ],
+      "id": "890994de-d977-42dc-932b-af5410ef56ca",
+      "name": "Create a file",
+      "webhookId": "5d6deac2-0aac-4547-98ad-676f402a3ee4",
+      "credentials": {
+        "githubOAuth2Api": {
+          "id": "4NqCmT8KvIvNJiYo",
+          "name": "GitHub OAuth2 API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://services.leadconnectorhq.com/contacts/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "locationId",
+              "value": "A0BcGX8PnPccQLUEzdm6"
+            },
+            {
+              "name": "query",
+              "value": "={{ $json.lineUserId }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "name": "Search GHL Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        592,
+        128
+      ],
+      "id": "abca56ee-253a-4897-b2af-bda95931d406",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "eIGPaCqa6w5u56Pr",
+          "name": "GHL API Key - LINE TC"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": ""
+          },
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{ $json.contacts?.length }}",
+              "rightValue": "0",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Contact Exists?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        736,
+        -48
+      ],
+      "id": "7695d811-18c2-4e12-8e55-5752b3418902"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/reply",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"replyToken\": \"{{ $('Parse LINE Data').item.json.replyToken }}\",\n  \"messages\": [\n    {\n      \"type\": \"template\",\n      \"altText\": \"請問你是？\",\n      \"template\": {\n        \"type\": \"buttons\",\n        \"text\": \"你好！歡迎來到 HASSE 太空學校 \\ud83d\\ude80\\n請問你是？\",\n        \"actions\": [\n          {\n            \"type\": \"message\",\n            \"label\": \"\\ud83c\\udf93 校友\",\n            \"text\": \"我是校友\"\n          },\n          {\n            \"type\": \"message\",\n            \"label\": \"\\ud83d\\ude4b 第一次認識\",\n            \"text\": \"第一次認識\"\n          }\n        ]\n      }\n    }\n  ]\n}",
+        "options": {}
+      },
+      "name": "Reply: Welcome New User",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        944,
+        208
+      ],
+      "id": "52a0adf8-1312-4883-8779-7dac49b29100",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "vLX9ZgLfdMvCBu7G",
+          "name": "LINE Bot Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.item.json;\nconst messageText = (item.messageText || '').trim();\nconst replyToken = item.replyToken;\nconst displayName = item.firstName || '';\nconst lineUserId = item.lineUserId || '';\n\nconst staticData = $getWorkflowStaticData('global');\nif (!staticData.users) staticData.users = {};\nconst userData = staticData.users[lineUserId] || {};\nconst userState = userData.state || 'new';\n\nlet messages = [];\nlet ghlAction = 'none';\nlet needsAI = false;\nlet nextState = userState;\nlet program = '';\nlet aiBody = null;\n\nfunction buttons(text, btns) {\n  return [{\n    type: 'template',\n    altText: text.substring(0, 40),\n    template: { type: 'buttons', text, actions: btns.map(b => ({ type: 'message', label: b, text: b })) }\n  }];\n}\nfunction textMsg(text) { return [{ type: 'text', text }]; }\nfunction welcomeMsg() {\n  return buttons('你好！歡迎來到 HASSE 太空學校 🚀\\n請問你是？', ['🎓 校友', '🙋 了解課程', '💬 我要問問題']);\n}\nfunction askAgeMsg() {\n  return buttons('我先確認一下孩子的年級，這樣可以給你最準確的資訊 😊\\n\\n請問目前是？', ['🎓 高中 / 大學', '📚 5–9 年級', '📒 1–4 年級']);\n}\n\nfunction buildAIBody(text, prog) {\n  const systemPrompt = '你是 HASSE 太空學校的 LINE 客服助手。請用繁體中文、友善親切的語氣回答問題。回答要簡短（不超過150字），適合手機聊天。\\n\\nHASSE 基本資訊：\\n- 成立於 2005 年，美國德州休士頓，國際知名太空教育組織\\n- 超過 15,000 名校友，來自 20+ 國家\\n- 與 NASA 太空人、科學家長期合作（非從屬關係）\\n- 亞太辦公室在台北信義路五段五號 7B12\\n\\n課程：\\n- HSS（高中/大學）：12天沉浸式，Mission Control 模擬、AI+Space 決策訓練。2026 夏季 梯次A 7/7-7/18、梯次B 7/14-7/25，每梯次限30名。台灣學員 USD 5,980（含住宿三餐保險）\\n- JSS（5-9年級）：初階太空課程，約10天。太空任務訓練、團隊合作、科學思維\\n- 科學探索營（1-4年級）\\n\\n設施：NASA 任務控制中心、中性浮力實驗室、SICSA 火星基地設計中心、萊斯大學\\n英文：基本溝通即可，不需流利\\n安全：24小時督導，含當地醫療保險\\n升學：校友錄取劍橋、牛津等，面試加分\\n\\n客服問題處理：\\n- 已報名但沒收到 Email → 告訴客戶「我們收到了，會盡快請專人回覆你」\\n- 付款/退費/改期 → 告訴客戶「我們收到了，會盡快請專人回覆你」\\n- 簽證/行前準備 → 告訴客戶「我們收到了，會盡快請專人回覆你」\\n- 其他帳務/行政問題 → 告訴客戶「我們收到了，會盡快請專人回覆你」\\n\\n如果問題超出你的知識範圍，請說「我們收到你的問題了，會盡快請專人回覆你 😊」\\n絕對不要叫客戶打電話或寫 Email，所有問題都由我們主動回覆。\\n不要編造不確定的資訊。回答末尾可以適當加 emoji。';\n  const userMsg = (prog ? '[學生類別: ' + prog + '] ' : '') + text;\n  return {\n    model: 'gpt-4o-mini',\n    messages: [\n      { role: 'system', content: systemPrompt },\n      { role: 'user', content: userMsg }\n    ],\n    max_tokens: 300,\n    temperature: 0.7\n  };\n}\n\nfunction answerFAQ(text) {\n  const t = text.toLowerCase();\n\n  if (/招生|有沒有開|還有開|有開課|開放報名|可以報名|今年有|明年有|還可以報|還能報/.test(t))\n    return '有的！2026 夏季 HSS 太空沉浸計畫正在招生中 🚀\\n\\n・梯次 A：7/7–7/18\\n・梯次 B：7/14–7/25\\n\\n每梯次限 30 名，採申請制，名額持續遞減中。\\n\\n要不要花 10 分鐘免費線上諮詢？😊';\n\n  if (/在哪|地點|location|where|休士頓|houston|美國|德州/.test(t))\n    return '課程在美國德州休士頓，NASA 詹森太空中心周邊 🚀\\n\\nHSS 為 12 天全程住宿沉浸式，進入的設施包括任務控制中心、中性浮力實驗室、SICSA 火星基地設計中心等。\\n\\n每一個場館都不是走馬看花，而是帶著任務進入，用真實資源解決問題。';\n\n  if (/什麼時候|時間|when|日期|幾月|暑假|summer|2026|2025|梯次|開課|開始|出發/.test(t))\n    return '2026 HSS 太空沉浸計畫：\\n・梯次 A：7/7–7/18\\n・梯次 B：7/14–7/25\\n\\n每梯次限 30 名，採申請制，名額持續遞減中。\\n建議盡早確認 😊';\n\n  if (/幾天|多久|多長|how long|duration|週|天數/.test(t))\n    return 'HSS 為 12 天全程住宿沉浸式課程。\\nJSS 初階太空學校約 10 天。\\n\\n詳細日程歡迎預約諮詢了解！';\n\n  if (/費用|多少錢|價格|學費|cost|fee|price|貴|投資|錢|花費|預算/.test(t))\n    return 'HSS 2026 夏季費用：\\n・台灣學員：USD 5,980（名額有限）\\n・國際標準：USD 7,999\\n\\n費用包含：12天課程、住宿、三餐、NASA設施參訪、24小時督導、結業證書、當地醫療保險\\n\\n不含：國際機票、個人零用金';\n\n  if (/住宿|住哪|hotel|住|宿舍|飯店/.test(t))\n    return '學生入住條件整潔舒適的飯店，設有專屬共同工作空間，供專案討論和課後交流。\\n\\n安全、便利是首要考量。全程有 HASSE 認證工作人員陪同 😊';\n\n  if (/安全|safe|safety|保險|危險|照顧|放心|擔心|worry/.test(t))\n    return '全程 24 小時有 HASSE 認證專業教育人員陪同督導。每個任務組有明確組長與協作角色。\\n\\nHASSE 為每位學員提供當地醫療保險，確保在美期間若有醫療需求都能妥善處理，家長可以放心 😊';\n\n  if (/英文|英語|english|語言|language|英檢/.test(t))\n    return '課程以英語進行，基本溝通能力就夠，不需要非常流利。\\n\\n歷屆學員英語程度差距很大，英語能力從來不是拒絕的理由。重要的是你能在討論中表達想法，這在課程過程中會自然發生 😊';\n\n  if (/名額|還有嗎|額滿|人數|幾個人|capacity|限/.test(t))\n    return '每梯次限 30 名，採申請制，名額持續遞減中。\\n\\n建議盡早預約諮詢確認最新名額狀況 😊';\n\n  if (/nasa參觀|遊學團|參觀|太空營|營隊|camp|tour/.test(t))\n    return '一般 NASA 遊覽：看展覽、聽導覽、拍照、離開。\\n\\nHASSE 學員：以任務組別身份進入同一批設施，帶著真實挑戰任務、工作角色和評估標準。\\n\\n場景相同，學習密度完全不同。太空營是體驗，HASSE 是訓練 🚀';\n\n  if (/hasse是什麼|什麼是hasse|hasse 是|太空學校是|介紹一下|什麼機構|什麼組織|你們是誰|你們是什麼|哪個單位|誰辦的|主辦|背景|公司|非營利|nonprofit/.test(t))\n    return 'HASSE 成立於 2005 年，總部在德州休士頓，是國際知名的太空教育組織。超過 15,000 名來自 20+ 國家的校友。\\n\\n與 NASA 太空人、科學家長期合作，以正式成員身份參與課程設計。榮獲 2024 ITC 全球商業影響力獎 🏆\\n\\n亞太辦公室設在台北，深耕亞太超過 18 年。';\n\n  if (/適合|誰可以|資格|條件|requirement|不是理工|文組|非stem|不走stem|什麼樣的學生|什麼學生/.test(t))\n    return '太空產業需要的人才橫跨科技、商業、法律、金融、設計、傳播。\\n\\nSpaceX 找的不只是火箭工程師，NASA 的工作也不只是計算軌道。不管念什麼科系，理解太空是跨領域的文明經濟，都是提早的優勢 💡';\n\n  if (/升學|大學申請|履歷|備審|推甄|college|admission|面試|牛津|劍橋|oxford|cambridge/.test(t))\n    return 'HASSE 校友成功錄取劍橋、牛津等頂尖大學。多位學員在面試中，教授主動追問 HASSE 經歷。\\n\\n牛津 Park 教授稱 HASSE 為「教育的典範轉移」。\\n\\n你寫的不是「我參加了課程」，而是「我做了這個專案，向業界專家發表成果，確認了我的方向」✨';\n\n  if (/怎麼報|報名流程|如何申請|how to apply|步驟/.test(t))\n    return '報名流程：\\n1️⃣ 預約免費 10 分鐘諮詢\\n2️⃣ 顧問幫你評估適合的課程\\n3️⃣ 確認後提交申請\\n\\n要不要我幫你安排諮詢？😊';\n\n  if (/家長|父母|parent|陪同|爸媽|一個人/.test(t))\n    return '完全可以一個人去！每屆學員都從不同地方各自前往，在課程中認識彼此是體驗的一部分。\\n\\n全程有專業團隊照顧，也會定期跟家長更新狀況。很多校友說，這裡建立的友誼是最難忘的收穫之一 😊';\n\n  if (/證書|certificate|結業|證明|校友|後續|支持/.test(t))\n    return '完成課程後頒發 HASSE 結業證書，並進入橫跨 20+ 國家的校友網絡。\\n\\n網絡裡有 SpaceX 工程師、Forbes 30 Under 30 創業者、JAXA 工程師、劍橋和 UC Berkeley 研究者。課程結束是進入社群的起點 🌍';\n\n  if (/ignis|框架|方法|學習方式|怎麼學/.test(t))\n    return 'IGNIS 是 HASSE 的三階段學習框架：\\n\\n🔥 Ignition（點燃）— 與太空科學家對話，確立你的方向\\n🔄 Iteration（迭代）— 實際操作、失敗、調整、再做一次\\n🎯 Integration（整合）— 向業界專家發表真實成果\\n\\n不是被動接收知識，而是帶著問題去探索 💡';\n\n  if (/ai|人工智慧|工作坊|workshop|程式/.test(t))\n    return 'AI 工作坊是 HSS 課程核心部分，不需要會寫程式！\\n\\n用 AI 工具解決太空任務中的真實問題：任務規劃、棲息地設計、情境建構等。\\n\\n學的不是工具操作，是用 AI 解決問題的思考方式 🤖';\n\n  if (/老師|師資|講師|教授|instructor|teacher|誰教/.test(t))\n    return '師資包括 NASA 太空人、世界知名教授、參與重要太空任務的科學家與工程師。\\n\\n他們不只是演講嘉賓，而是實際參與課程設計與執行。Roland Nedelkovich 先生曾兩度獲 NASA「銀色史努比獎」🏅';\n\n  if (/(hss|jss).*(差|不同|區別|比較)|(差|不同|區別|比較).*(hss|jss)|初階.*高階|高階.*初階/.test(t))\n    return 'JSS 是點燃 🔥 HSS 是定向 🎯\\n\\nJSS（5-9年級）：打開學習興趣，發現好奇心。由老師主導，學生跟著任務走。\\n\\nHSS（高中大學）：釐清未來方向，自己主導學習，向業界專家發表成果。\\n\\n兩個設計邏輯完全不同的課程！';\n\n  if (/太空經濟|未來|前景|就業|職涯|career|trillion|兆/.test(t))\n    return '2040 年全球太空經濟規模預計超過一兆美元 🚀\\n\\n推動的不只是火箭工程師，而是橫跨科技、商業、法律、政策、建築、醫療、傳播的跨領域人才。\\n\\n太空提供的不是一個答案，而是一個夠大的格局，讓你找到自己的位置。';\n\n  if (/內向|害羞|shy|introvert|不敢/.test(t))\n    return '結構清晰的小組任務環境，對內向的學生往往比開放式社交更友善 😊\\n\\n每位學生都有明確角色，互動建立在共同解決問題上，不是社交壓力。\\n\\n許多內向學生反而在這裡找到自信，因為他們的思考和貢獻在這裡是被看見的 ✨';\n\n  if (/好玩|fun|有趣|好不好玩/.test(t))\n    return '學生一致的回答是：好玩！🎉\\n\\n但不只是好玩——課程目的是引導學生開始思考未來，鼓勵大膽的夢想。我們稱之為「登月思維」🌙\\n\\n太空學校提供不同的視角，讓學生重新看見自己真正在意的事。';\n\n  if (/改變|收穫|學到|回來|之後|成長/.test(t))\n    return '最常見的改變不是知識點，而是對學習的態度 ✨\\n\\n學生開始知道自己對什麼感興趣、願意主動思考未來、相信自己有能力做到原本覺得遙遠的事。\\n\\n高中生：釐清大學方向、面試有真實經歷、建立國際連結。';\n\n  if (/機場|接送|接機|airport|iah|transfer/.test(t))\n    return '可以安排！從休士頓 IAH 機場到飯店的專人接送，單程約 USD 150-250。\\n\\n若有其他學員相近時間抵達可共乘分攤。需要安排請聯繫 HASSE 亞太辦公室 😊';\n\n  if (/聯絡|電話|email|地址|辦公室|contact/.test(t))\n    return 'HASSE 亞太辦公室 🏢\\n\\n📍 台北市信義路五段五號 7B12\\n💬 LINE @nhe2702g\\n🌐 spaceschool.org\\n\\n有任何問題都可以直接在這裡問，我們會盡快回覆 😊';\n\n  if (/成績|考試|分數|grade|score|學業/.test(t))\n    return '課程目標不是提升考試成績，而是解決更根本的問題：讓學生知道自己為什麼要學習 💡\\n\\n一旦找到真正投入的領域，學習動力會從根本改變。這是 IGNIS 框架的核心：先點燃熱情，再建立能力 🔥';\n\n  if (/遊學|比較|選擇|哪種|touring|schooling/.test(t))\n    return 'HASSE 把海外學習分三個層次：\\n\\n🚌 Touring（遊覽型）— 看了很多，深度有限\\n🏫 Schooling（名校型）— 品牌知名，收穫因人而異\\n🔬 Deep Learning（深度學習）— HASSE 屬於這類\\n\\n選擇什麼學習深度，比選擇去哪裡更重要！';\n\n  if (/nasa.*關係|關係.*nasa/.test(t))\n    return 'HASSE 與 NASA 無直接從屬關係，但自創立以來，大量 NASA 太空人、科學家與工程師以正式成員身份參與課程。\\n\\nHASSE 的貢獻曾獲兩大 NASA 太空中心執行長公開肯定。\\n\\n「HASSE 太空學校是一個非常好的課程，我強力推薦。」— NASA 太空人 Leroy Chiao 🧑‍🚀';\n\n  return null;\n}\n\nfunction detectAge(text) {\n  const t = text.toLowerCase();\n  const gradeMatch = t.match(/(\\d+)\\s*年級/);\n  if (gradeMatch) {\n    const grade = parseInt(gradeMatch[1]);\n    if (grade >= 1 && grade <= 4) return 'young';\n    if (grade >= 5 && grade <= 9) return 'jss';\n    if (grade >= 10) return 'hss';\n  }\n  const ageMatch = t.match(/(\\d+)\\s*歲/);\n  if (ageMatch) {\n    const age = parseInt(ageMatch[1]);\n    if (age <= 10) return 'young';\n    if (age >= 11 && age <= 14) return 'jss';\n    if (age >= 15) return 'hss';\n  }\n  if (/小一|小二|小三|小四|一年級|二年級|三年級|四年級|低年級|中年級/.test(t)) return 'young';\n  if (/小五|小六|五年級|六年級|高年級|國一|國二|國三|七年級|八年級|九年級|初一|初二|初三|國中/.test(t)) return 'jss';\n  if (/高一|高二|高三|十年級|十一年級|十二年級|高中|大一|大二|大三|大四|大學|college|university/.test(t)) return 'hss';\n  return null;\n}\n\nfunction detectIntent(text) {\n  const t = text.toLowerCase();\n  if (/已.*(報名|繳|付款|申請)|沒.*收到|收不到|退費|退款|取消|改期|簽證|行前|出發前|已經報名|已報名|已繳費|已付款|付了|匯了/.test(t)) return 'cs_existing';\n  if (/報名|申請|參加|註冊|enroll|register|sign.?up|招生/.test(t)) return 'want_register';\n  if (/費用|多少錢|價格|學費|cost|fee|price/.test(t)) return 'ask_fee';\n  if (/諮詢|顧問|consultant|consult/.test(t)) return 'want_consult';\n  if (/課程|內容|介紹|了解|what|course/.test(t)) return 'ask_info';\n  if (/校友|alumni|畢業/.test(t)) return 'alumni';\n  if (/hss/i.test(t) && !/jss/i.test(t)) return 'hss';\n  if (/jss/i.test(t) && !/hss/i.test(t)) return 'jss';\n  if (/說明會|webinar|講座/.test(t)) return 'webinar';\n  if (/你好|hi|hello|嗨|哈囉/.test(t)) return 'greeting';\n  return 'unknown';\n}\n\n// === State Machine ===\n\nif (userState === 'alumni_wait') {\n  messages = textMsg('收到！你參加的是「' + messageText + '」對嗎？\\n\\n謝謝你的資訊 😊 我已經幫你記錄了，我們團隊會盡快跟你聯繫！');\n  ghlAction = 'alumni';\n  nextState = 'done';\n\n} else if (userState === 'faq_need_age') {\n  let handled = true;\n  switch(messageText) {\n    case '🎓 高中 / 大學': case '高中 / 大學': case '高中/大學':\n      program = 'HSS'; break;\n    case '📚 5–9 年級': case '5–9 年級': case '5-9 年級':\n      program = 'JSS'; break;\n    case '📒 1–4 年級': case '1–4 年級': case '1-4 年級':\n      messages = textMsg('1–4 年級適合我們的「科學探索營」🔬\\n\\n我請專人跟你聯繫，幫你了解詳細內容 😊\\n請稍等一下～');\n      ghlAction = 'young_student'; nextState = 'done'; handled = false; break;\n    default: {\n      const ag = detectAge(messageText);\n      if (ag === 'hss') { program = 'HSS'; }\n      else if (ag === 'jss') { program = 'JSS'; }\n      else if (ag === 'young') {\n        messages = textMsg('1–4 年級適合我們的「科學探索營」🔬\\n\\n我請專人跟你聯繫，幫你了解詳細內容 😊\\n請稍等一下～');\n        ghlAction = 'young_student'; nextState = 'done'; handled = false;\n      } else {\n        messages = askAgeMsg();\n        nextState = 'faq_need_age'; handled = false;\n      }\n      break;\n    }\n  }\n  if (handled && program) {\n    const pName = program === 'HSS' ? '高階太空學校 (HSS)' : '初階太空學校 (JSS)';\n    messages = textMsg('了解！' + pName + ' 😊\\n\\n請直接打你的問題，我會盡量回答！\\n答不了的我會請專人幫你！');\n    nextState = 'done';\n  }\n\n} else if (userState === 'choose_method') {\n  switch(messageText) {\n    case '💬 LINE 通話': case 'LINE 通話':\n      messages = textMsg('好的！方便什麼時候？我請顧問直接 LINE 你 😊');\n      ghlAction = 'hot_line'; nextState = 'done'; break;\n    case '📹 Zoom': case 'Zoom':\n      const zUrl = (userData.program === 'HSS') ? 'https://tcghss1.spaceschool.org' : 'https://tcgjss1.spaceschool.org';\n      messages = textMsg('好的！這裡可以直接選時間 👉\\n' + zUrl + '\\n\\n預約完成後，我們會先了解學生背景，再給具體建議 😊');\n      ghlAction = 'hot_zoom'; nextState = 'done'; break;\n    default:\n      messages = buttons('請選擇你比較方便的方式 😊', ['💬 LINE 通話', '📹 Zoom']);\n      nextState = 'choose_method'; break;\n  }\n\n} else if (userState === 'showed_info') {\n  switch(messageText) {\n    case '好啊 👋': case '好啊':\n      messages = buttons('太好了！你比較方便哪種方式？', ['💬 LINE 通話', '📹 Zoom']);\n      nextState = 'choose_method'; break;\n    case '先想想':\n      messages = textMsg('沒問題！有任何問題隨時問我們 😊\\n\\n這裡有招生介紹可以參考 👉\\nhttps://tcghss1.spaceschool.org/');\n      ghlAction = 'warm'; nextState = 'done'; break;\n    default: {\n      const faq = answerFAQ(messageText);\n      if (faq) {\n        messages = textMsg(faq);\n        nextState = 'done';\n      } else {\n        needsAI = true;\n        aiBody = buildAIBody(messageText, userData.program || program);\n        ghlAction = 'cs_question';\n        nextState = 'done';\n      }\n      break;\n    }\n  }\n\n} else if (userState === 'cs_wait' || userState === 'done') {\n  const faqAnswer = answerFAQ(messageText);\n  if (faqAnswer) {\n    messages = textMsg(faqAnswer);\n    nextState = 'done';\n  } else {\n    const intent = detectIntent(messageText);\n    if (intent === 'cs_existing') {\n      needsAI = true;\n      aiBody = buildAIBody(messageText, userData.program || '');\n      ghlAction = 'cs_question';\n      nextState = 'done';\n    } else if (intent === 'want_register' || intent === 'want_consult') {\n      messages = buttons('想報名或諮詢都可以！你比較方便哪種方式？', ['💬 LINE 通話', '📹 Zoom']);\n      nextState = 'choose_method';\n    } else if (intent === 'ask_fee') {\n      messages = buttons('HSS 2026 費用：\\n・台灣學員：USD 5,980\\n・國際：USD 7,999\\n\\n含課程、住宿、三餐、保險等\\n不含機票\\n\\n想了解更多？', ['好啊 👋', '先想想']);\n      nextState = 'showed_info';\n    } else if (intent === 'webinar' || intent === 'ask_info') {\n      messages = textMsg('這裡有完整介紹 👉\\nhttps://tcghss.spaceschool.org/webinar\\n\\n有其他問題也可以繼續問我 😊');\n      nextState = 'done';\n    } else if (intent === 'greeting') {\n      messages = textMsg('你好！有什麼問題都可以問我 😊');\n      nextState = 'done';\n    } else {\n      const ageResult = detectAge(messageText);\n      if (ageResult === 'young') {\n        messages = textMsg('1–4 年級適合我們的「科學探索營」🔬\\n\\n我請專人跟你聯繫，幫你了解詳細內容 😊\\n請稍等一下～');\n        ghlAction = 'young_student'; nextState = 'done';\n      } else if (ageResult === 'jss') {\n        messages = buttons('根據年級，推薦 JSS 初階太空學校 😊\\n\\n・太空任務基礎訓練\\n・團隊合作與問題解決\\n・建立科學思維與國際視野\\n\\n要不要花 10 分鐘免費線上諮詢？', ['好啊 👋', '先想想']);\n        program = 'JSS'; nextState = 'showed_info';\n      } else if (ageResult === 'hss') {\n        messages = buttons('根據年級，推薦 HSS 高階太空學校 😊\\n\\n・Mission Control 模擬\\n・AI + Space 決策訓練\\n・與 NASA / 產業環境接觸\\n\\n2026 費用 USD 5,980（台灣學員）\\n\\n要不要花 10 分鐘免費線上諮詢？', ['好啊 👋', '先想想']);\n        program = 'HSS'; nextState = 'showed_info';\n      } else {\n        needsAI = true;\n        aiBody = buildAIBody(messageText, userData.program || '');\n        ghlAction = 'cs_question';\n        nextState = 'done';\n      }\n    }\n  }\n\n} else {\n  let handled = true;\n  switch(messageText) {\n    case '🎓 校友': case '校友':\n      messages = textMsg('歡迎回來！🎓\\n請問你是什麼時候參加的什麼課程？\\n（例如：2024 HSS）');\n      nextState = 'alumni_wait'; break;\n    case '🙋 了解課程': case '了解課程': case '🙋 第一次認識': case '第一次認識':\n      messages = askAgeMsg(); nextState = 'ask_age'; break;\n    case '💬 我要問問題': case '我要問問題': case '💬 常見問題': case '常見問題': case '💬 我有問題': case '我有問題':\n      if (userData.program) {\n        messages = textMsg('沒問題！請直接打你的問題，我會盡量回答 😊\\n答不了的我會請專人幫你！');\n        nextState = 'done';\n      } else {\n        messages = askAgeMsg();\n        nextState = 'faq_need_age';\n      }\n      break;\n    case '🎓 高中 / 大學': case '高中 / 大學': case '高中/大學': case '14 歲以上':\n      messages = buttons('HSS 高階太空學校是高強度的任務訓練環境，接近真實產業：\\n\\n・Mission Control 模擬\\n・AI + Space 決策訓練\\n・與 NASA / 產業環境接觸\\n\\n2026 夏季費用約 USD 5,980（台灣學員，名額有限）\\n\\n如果有興趣，我可以幫你看看適不適合 😊\\n要不要花 10 分鐘免費線上諮詢？', ['好啊 👋', '先想想']);\n      program = 'HSS'; nextState = 'showed_info'; break;\n    case '📚 5–9 年級': case '5–9 年級': case '5-9 年級': case '11–14 歲':\n      messages = buttons('JSS 初階太空學校是為 5–9 年級設計的課程：\\n\\n・太空任務基礎訓練\\n・團隊合作與問題解決\\n・建立科學思維與國際視野\\n\\n如果有興趣，我可以幫你看看適不適合 😊\\n要不要花 10 分鐘免費線上諮詢？', ['好啊 👋', '先想想']);\n      program = 'JSS'; nextState = 'showed_info'; break;\n    case '📒 1–4 年級': case '1–4 年級': case '1-4 年級':\n      messages = textMsg('1–4 年級適合我們的「科學探索營」🔬\\n\\n我請專人跟你聯繫，幫你了解詳細內容 😊\\n請稍等一下～');\n      ghlAction = 'young_student'; nextState = 'done'; break;\n    case '好啊 👋': case '好啊':\n      messages = buttons('太好了！你比較方便哪種方式？', ['💬 LINE 通話', '📹 Zoom']);\n      nextState = 'choose_method'; break;\n    case '💬 LINE 通話':\n      messages = textMsg('好的！方便什麼時候？我請顧問直接 LINE 你 😊');\n      ghlAction = 'hot_line'; nextState = 'done'; break;\n    case '📹 Zoom': {\n      const zoomUrl = (userData.program === 'HSS') ? 'https://tcghss1.spaceschool.org' : 'https://tcgjss1.spaceschool.org';\n      messages = textMsg('好的！這裡可以直接選時間 👉\\n' + zoomUrl + '\\n\\n預約完成後，我們會先了解學生背景，再給具體建議 😊');\n      ghlAction = 'hot_zoom'; nextState = 'done'; break;\n    }\n    case '先想想':\n      messages = textMsg('沒問題！有任何問題隨時問我們 😊\\n\\n這裡有招生介紹可以參考 👉\\nhttps://tcghss1.spaceschool.org/');\n      ghlAction = 'warm'; nextState = 'done'; break;\n    default: handled = false; break;\n  }\n\n  if (!handled) {\n    const faqAnswer = answerFAQ(messageText);\n    if (faqAnswer) {\n      messages = textMsg(faqAnswer);\n      nextState = 'done';\n    } else {\n      const intent = detectIntent(messageText);\n      switch(intent) {\n        case 'cs_existing':\n          needsAI = true;\n          aiBody = buildAIBody(messageText, userData.program || '');\n          ghlAction = 'cs_question';\n          nextState = 'done'; break;\n        case 'want_register': case 'want_consult':\n          messages = askAgeMsg(); nextState = 'ask_age'; break;\n        case 'ask_fee':\n          messages = buttons('HSS 2026 費用：\\n・台灣學員：USD 5,980\\n・國際：USD 7,999\\n\\n含課程、住宿、三餐、保險等\\n不含機票\\n\\n想了解更多？', ['好啊 👋', '先想想']);\n          nextState = 'showed_info'; break;\n        case 'ask_info':\n          messages = askAgeMsg(); nextState = 'ask_age'; break;\n        case 'alumni':\n          messages = textMsg('歡迎回來！🎓\\n請問你是什麼時候參加的什麼課程？\\n（例如：2024 HSS）');\n          nextState = 'alumni_wait'; break;\n        case 'hss':\n          messages = buttons('HSS 是高強度的任務訓練環境：\\n\\n・Mission Control 模擬\\n・AI + Space 決策訓練\\n・與 NASA / 產業環境接觸\\n\\n2026 費用 USD 5,980（台灣學員）\\n\\n要不要花 10 分鐘免費線上諮詢？', ['好啊 👋', '先想想']);\n          program = 'HSS'; nextState = 'showed_info'; break;\n        case 'jss':\n          messages = buttons('JSS 初階太空學校（5-9年級）：\\n\\n・太空任務基礎訓練\\n・團隊合作與問題解決\\n・建立科學思維與國際視野\\n\\n要不要花 10 分鐘免費線上諮詢？', ['好啊 👋', '先想想']);\n          program = 'JSS'; nextState = 'showed_info'; break;\n        case 'webinar':\n          messages = textMsg('這裡可以報名說明會 👉\\nhttps://tcghss.spaceschool.org/webinar\\n\\n有問題隨時問我們 😊');\n          nextState = 'done'; break;\n        case 'greeting':\n          messages = welcomeMsg(); nextState = 'welcome'; break;\n        default: {\n          const ageResult2 = detectAge(messageText);\n          if (ageResult2 === 'young') {\n            messages = textMsg('1–4 年級適合我們的「科學探索營」🔬\\n\\n我請專人跟你聯繫，幫你了解詳細內容 😊\\n請稍等一下～');\n            ghlAction = 'young_student'; nextState = 'done';\n          } else if (ageResult2 === 'jss') {\n            messages = buttons('根據年級，推薦 JSS 初階太空學校 😊\\n\\n・太空任務基礎訓練\\n・團隊合作與問題解決\\n・建立科學思維與國際視野\\n\\n要不要花 10 分鐘免費線上諮詢？', ['好啊 👋', '先想想']);\n            program = 'JSS'; nextState = 'showed_info';\n          } else if (ageResult2 === 'hss') {\n            messages = buttons('根據年級，推薦 HSS 高階太空學校 😊\\n\\n・Mission Control 模擬\\n・AI + Space 決策訓練\\n・與 NASA / 產業環境接觸\\n\\n2026 費用 USD 5,980（台灣學員）\\n\\n要不要花 10 分鐘免費線上諮詢？', ['好啊 👋', '先想想']);\n            program = 'HSS'; nextState = 'showed_info';\n          } else {\n            needsAI = true;\n            aiBody = buildAIBody(messageText, userData.program || '');\n            ghlAction = 'cs_question';\n            nextState = 'done';\n          }\n          break;\n        }\n      }\n    }\n  }\n}\n\nstaticData.users[lineUserId] = { state: nextState, program: program || userData.program || '', updatedAt: Date.now() };\nreturn { replyToken, messages, ghlAction, needsAI, aiBody, messageText, displayName, lineUserId, state: nextState, program: program || userData.program || '' };",
+        "mode": "runOnceForEachItem"
+      },
+      "name": "Chatbot Router",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        792,
+        320
+      ],
+      "id": "chatbot-router-001"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/reply",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ replyToken: $json.replyToken, messages: $json.messages }) }}",
+        "options": {}
+      },
+      "name": "Send LINE Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1672,
+        320
+      ],
+      "id": "send-reply-001",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "vLX9ZgLfdMvCBu7G",
+          "name": "LINE Bot Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": ""
+          },
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{ $json.needsAI }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Needs AI?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1012,
+        320
+      ],
+      "id": "needs-ai-check"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{OPENAI_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.aiBody) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "name": "Ask OpenAI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1232,
+        220
+      ],
+      "id": "ask-openai-001"
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiResponse = $input.item.json.choices?.[0]?.message?.content || '這個問題我幫你轉給專人，會盡快回覆你 😊';\nconst prev = $('Chatbot Router').first().json;\n\nreturn {\n  replyToken: prev.replyToken,\n  messages: [{ type: 'text', text: aiResponse }],\n  ghlAction: prev.ghlAction,\n  messageText: prev.messageText,\n  displayName: prev.displayName,\n  lineUserId: prev.lineUserId,\n  state: prev.state,\n  program: prev.program\n};",
+        "mode": "runOnceForEachItem"
+      },
+      "name": "Format AI Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1452,
+        220
+      ],
+      "id": "format-ai-001"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": ""
+          },
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{ $('Chatbot Router').first().json.ghlAction }}",
+              "rightValue": "none",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Save to GHL?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1892,
+        320
+      ],
+      "id": "save-ghl-if"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/contacts/upsert",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  locationId: 'A0BcGX8PnPccQLUEzdm6',\n  firstName: $('Chatbot Router').first().json.displayName,\n  source: 'LINE Chatbot',\n  tags: [\n    'LINE',\n    $('Chatbot Router').first().json.ghlAction === 'cs_question' ? '待回覆' :\n    $('Chatbot Router').first().json.ghlAction === 'cs_existing' ? '待回覆' :\n    $('Chatbot Router').first().json.ghlAction === 'hot_line' ? 'LINE諮詢' :\n    $('Chatbot Router').first().json.ghlAction === 'hot_zoom' ? 'Zoom諮詢' :\n    $('Chatbot Router').first().json.ghlAction === 'warm' ? '觀望中' :\n    $('Chatbot Router').first().json.ghlAction === 'alumni' ? '校友' :\n    $('Chatbot Router').first().json.ghlAction === 'young_student' ? '科學探索營' :\n    'LINE'\n  ].filter(Boolean),\n  customFields: [\n    { id: 'VHBNkQBpsivixjZAzrMd', field_value: $('Chatbot Router').first().json.lineUserId },\n    { id: 'qN47bb52eT0ky7wlebrR', field_value: $('Chatbot Router').first().json.state || 'done' }\n  ]\n}) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "name": "GHL Upsert Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2112,
+        220
+      ],
+      "id": "ghl-upsert-new",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "eIGPaCqa6w5u56Pr",
+          "name": "GHL API Key - LINE TC"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://services.leadconnectorhq.com/contacts/{{ $json.contact?.id }}/notes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  body: '📱 LINE 訊息\\n' +\n    '動作: ' + $('Chatbot Router').first().json.ghlAction + '\\n' +\n    '問題: ' + $('Chatbot Router').first().json.messageText + '\\n' +\n    '課程: ' + ($('Chatbot Router').first().json.program || '未選擇') + '\\n' +\n    '時間: ' + new Date().toISOString()\n}) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "name": "GHL Add Note",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2332,
+        220
+      ],
+      "id": "ghl-note-new",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "eIGPaCqa6w5u56Pr",
+          "name": "GHL API Key - LINE TC"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "Get LINE Profile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get LINE Profile": {
+      "main": [
+        [
+          {
+            "node": "Parse LINE Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse LINE Data": {
+      "main": [
+        [
+          {
+            "node": "Chatbot Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HSS or JSS?": {
+      "main": [
+        [
+          {
+            "node": "Upsert GHL Contact (HSS)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Upsert GHL Contact (JSS)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert GHL Contact (HSS)": {
+      "main": [
+        [
+          {
+            "node": "Create HSS Opportunity",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Trigger GHL HSS Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert GHL Contact (JSS)": {
+      "main": [
+        [
+          {
+            "node": "Create JSS Opportunity",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Trigger GHL JSS Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create HSS Opportunity": {
+      "main": [
+        [
+          {
+            "node": "Notify Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create JSS Opportunity": {
+      "main": [
+        []
+      ]
+    },
+    "Chatbot Router": {
+      "main": [
+        [
+          {
+            "node": "Needs AI?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs AI?": {
+      "main": [
+        [
+          {
+            "node": "Ask OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send LINE Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Format AI Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format AI Reply": {
+      "main": [
+        [
+          {
+            "node": "Send LINE Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send LINE Reply": {
+      "main": [
+        [
+          {
+            "node": "Save to GHL?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to GHL?": {
+      "main": [
+        [
+          {
+            "node": "GHL Upsert Contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "GHL Upsert Contact": {
+      "main": [
+        [
+          {
+            "node": "GHL Add Note",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "callerPolicy": "workflowsFromSameOwner",
+    "saveManualExecutions": true
+  },
+  "staticData": {
+    "global": {
+      "users": {
+        "Uf45f410f97804268626914fb91b199eb": {
+          "state": "done",
+          "program": "HSS",
+          "updatedAt": 1775660929948
+        },
+        "Ucbbefc922ac2a6dce088a39033f0ffa4": {
+          "state": "done",
+          "program": "",
+          "updatedAt": 1775662042203
+        }
+      }
+    }
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {
+    "Webhook1": [
+      {
+        "json": {
+          "headers": {
+            "host": "portbis.app.n8n.cloud",
+            "user-agent": "curl/8.7.1",
+            "content-length": "517",
+            "accept": "*/*",
+            "accept-encoding": "gzip, br",
+            "cdn-loop": "cloudflare; loops=1; subreqs=1",
+            "cf-connecting-ip": "1.163.253.3",
+            "cf-ew-via": "15",
+            "cf-ipcountry": "TW",
+            "cf-ray": "9e877b1dcdbaa9ad-TPE",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "cf-worker": "n8n.cloud",
+            "content-type": "application/json",
+            "x-forwarded-for": "1.163.253.3, 172.68.87.30",
+            "x-forwarded-host": "portbis.app.n8n.cloud",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "traefik-prod-users-gwc-1-d467f55bf-w4ktm",
+            "x-is-trusted": "yes",
+            "x-real-ip": "1.163.253.3"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "destination": "Udeadbeefdeadbeefdeadbeefdeadbeef",
+            "events": [
+              {
+                "type": "message",
+                "message": {
+                  "type": "text",
+                  "id": "1234567890",
+                  "text": "HASSE報名諮詢：姓名：林測試 電話：0922123456 電子郵件：test@example.com"
+                },
+                "timestamp": 1234567890123,
+                "source": {
+                  "type": "user",
+                  "userId": "U1234567890abcdef1234567890abcdef"
+                },
+                "replyToken": "nHuyWiB7yP5Zw52FIkcQobQuGDXCTA",
+                "mode": "active"
+              }
+            ]
+          },
+          "webhookUrl": "https://portbis.app.n8n.cloud/webhook/line-lead",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "versionId": "bfbd5fbf-e2d8-4d26-9649-b84024e5f593",
+  "activeVersionId": "bfbd5fbf-e2d8-4d26-9649-b84024e5f593",
+  "versionCounter": 274,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-03-24T13:29:02.453Z",
+      "createdAt": "2026-03-24T13:29:02.453Z",
+      "role": "workflow:owner",
+      "workflowId": "fFnV9UqWZ4q4CtjP",
+      "projectId": "wqbNheoazEOuxFqc",
+      "project": {
+        "updatedAt": "2026-01-09T17:29:05.737Z",
+        "createdAt": "2026-01-09T17:29:00.861Z",
+        "id": "wqbNheoazEOuxFqc",
+        "name": "James Liu <thehasse@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "cf28b4f6-5a8e-4b53-805b-5e9f20d14f6d"
+      }
+    }
+  ],
+  "tags": [
+    {
+      "updatedAt": "2026-03-24T13:29:00.547Z",
+      "createdAt": "2026-03-24T13:29:00.547Z",
+      "id": "5K7Ajet135wDycrc",
+      "name": "Taiwan"
+    },
+    {
+      "updatedAt": "2026-03-20T14:46:16.196Z",
+      "createdAt": "2026-03-20T14:46:16.196Z",
+      "id": "6ImuZzUzwrXRXYLX",
+      "name": "GHL"
+    },
+    {
+      "updatedAt": "2026-03-24T13:29:00.491Z",
+      "createdAt": "2026-03-24T13:29:00.491Z",
+      "id": "8nE9zJhoYx58vHks",
+      "name": "LINE"
+    }
+  ],
+  "activeVersion": {
+    "updatedAt": "2026-04-08T15:26:57.055Z",
+    "createdAt": "2026-04-08T15:26:57.055Z",
+    "versionId": "bfbd5fbf-e2d8-4d26-9649-b84024e5f593",
+    "workflowId": "fFnV9UqWZ4q4CtjP",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "line-lead",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          208,
+          320
+        ],
+        "id": "0a92285c-6075-45c4-bfd4-203d45e5e3a2",
+        "name": "Webhook1",
+        "webhookId": "5c2365ad-80f3-40ed-b167-db2e8dd7f7ce"
+      },
+      {
+        "parameters": {
+          "url": "=https://api.line.me/v2/bot/profile/{{ $json.body.events ? $json.body.events[0].source.userId : ($json.body.userId || '') }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "options": {
+            "timeout": 5000
+          }
+        },
+        "id": "get-line-profile",
+        "name": "Get LINE Profile",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          336,
+          320
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "vLX9ZgLfdMvCBu7G",
+            "name": "LINE Bot Token"
+          }
+        },
+        "continueOnFail": true,
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "1",
+                "name": "firstName",
+                "value": "={{ $json.displayName || $('Webhook1').item.json.body.displayName || $('Webhook1').item.json.body.name || 'LINE Lead' }}",
+                "type": "string"
+              },
+              {
+                "id": "2",
+                "name": "displayName",
+                "value": "={{ $json.displayName || $('Webhook1').item.json.body.displayName || '' }}",
+                "type": "string"
+              },
+              {
+                "id": "3",
+                "name": "lineUserId",
+                "value": "={{ $('Webhook1').item.json.body.events ? $('Webhook1').item.json.body.events[0].source.userId : ($('Webhook1').item.json.body.userId || $('Webhook1').item.json.body.lineId || '') }}",
+                "type": "string"
+              },
+              {
+                "id": "4",
+                "name": "phone",
+                "value": "={{ $('Webhook1').item.json.body.phone || '' }}",
+                "type": "string"
+              },
+              {
+                "id": "5",
+                "name": "email",
+                "value": "={{ $('Webhook1').item.json.body.email || '' }}",
+                "type": "string"
+              },
+              {
+                "id": "6",
+                "name": "program",
+                "value": "={{ $('Webhook1').item.json.body.program || ($('Webhook1').item.json.body.events?.[0]?.message?.text?.toLowerCase().includes('jss') ? 'JSS' : ($('Webhook1').item.json.body.events?.[0]?.message?.text?.toLowerCase().includes('國中') ? 'JSS' : ($('Webhook1').item.json.body.events?.[0]?.message?.text?.toLowerCase().includes('junior') ? 'JSS' : 'HSS'))) }}",
+                "type": "string"
+              },
+              {
+                "id": "7",
+                "name": "messageText",
+                "value": "={{ $('Webhook1').item.json.body.events ? $('Webhook1').item.json.body.events[0].message?.text : ($('Webhook1').item.json.body.message || '') }}",
+                "type": "string"
+              },
+              {
+                "id": "8",
+                "name": "profilePicUrl",
+                "value": "={{ $json.pictureUrl || '' }}",
+                "type": "string"
+              },
+              {
+                "id": "9",
+                "name": "eventType",
+                "value": "={{ $('Webhook1').item.json.body.events ? $('Webhook1').item.json.body.events[0].type : 'api' }}",
+                "type": "string"
+              },
+              {
+                "id": "10",
+                "name": "replyToken",
+                "value": "={{ $('Webhook1').item.json.body.events ? $('Webhook1').item.json.body.events[0].replyToken : '' }}",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "parse-data",
+        "name": "Parse LINE Data",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          528,
+          320
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": false,
+              "leftValue": "",
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "id": "reply-check",
+                "leftValue": "={{ $json.replyToken }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "string",
+                  "operation": "notEmpty"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "has-reply-token",
+        "name": "Has Reply Token?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          720,
+          560
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.line.me/v2/bot/message/reply",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"replyToken\": \"{{ $('Parse LINE Data').item.json.replyToken }}\",\n  \"messages\": [\n    {\n      \"type\": \"text\",\n      \"text\": \"{{ $('Parse LINE Data').item.json.displayName || '你' }}好！感謝你對 HASSE 太空學校的關注 🚀\\n\\n2026 暑期梯次（7/7-7/18）正在接受報名。\\n\\n我們的顧問團隊會盡快與你聯繫，協助你了解最適合的課程。\\n\\n📞 台灣專線：02-8780-8650\\n🌐 HSS：tcghss1.spaceschool.org\\n🌐 JSS：tcgjss1.spaceschool.org\"\n    }\n  ]\n}",
+          "options": {
+            "timeout": 5000
+          }
+        },
+        "id": "reply-line-user",
+        "name": "Reply to LINE User",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          960,
+          672
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "vLX9ZgLfdMvCBu7G",
+            "name": "LINE Bot Token"
+          }
+        },
+        "continueOnFail": true
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": false,
+              "leftValue": "",
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "id": "1",
+                "leftValue": "={{ $json.program }}",
+                "rightValue": "HSS",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "route-program",
+        "name": "HSS or JSS?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          704,
+          144
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://services.leadconnectorhq.com/contacts/upsert",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Version",
+                "value": "2021-07-28"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"firstName\": \"{{ $('Parse LINE Data').item.json.displayName || $('Parse LINE Data').item.json.firstName }}\",\n  \"phone\": \"{{ $('Parse LINE Data').item.json.phone }}\",\n\"email\": \"{{ $('Parse LINE Data').item.json.email || $('Parse LINE Data').item.json.lineUserId + '@line.placeholder' }}\",\n  \"source\": \"LINE - TC HSS Taiwan\",\n  \"tags\": [\"line-lead\", \"[2026] taiwan\", \"[hss] 2026-tw\", \"[hss] 2026-s\", \"tc-funnel\"],\n  \"locationId\": \"A0BcGX8PnPccQLUEzdm6\",\n  \"customFields\": [\n    {\"key\": \"line_user_id\", \"value\": \"{{ $('Parse LINE Data').item.json.lineUserId }}\"}\n  ]\n}",
+          "options": {
+            "timeout": 10000
+          }
+        },
+        "id": "create-hss-contact",
+        "name": "Upsert GHL Contact (HSS)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          944,
+          -32
+        ],
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 2000,
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "eIGPaCqa6w5u56Pr",
+            "name": "GHL API Key - LINE TC"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://services.leadconnectorhq.com/contacts/upsert",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Version",
+                "value": "2021-07-28"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"firstName\": \"{{ $('Parse LINE Data').item.json.displayName || $('Parse LINE Data').item.json.firstName }}\",\n  \"phone\": \"{{ $('Parse LINE Data').item.json.phone }}\",\n  \"email\": \"{{ $('Parse LINE Data').item.json.email || $('Parse LINE Data').item.json.lineUserId + '@line.placeholder' }}\",\n  \"source\": \"LINE - TC JSS Taiwan\",\n  \"tags\": [\"line-lead\", \"[2026] taiwan\", \"[jss] 2026-tw\", \"[jss] 2026-s\", \"tc-funnel\"],\n  \"locationId\": \"A0BcGX8PnPccQLUEzdm6\",\n  \"customFields\": [\n    {\"key\": \"line_user_id\", \"value\": \"{{ $('Parse LINE Data').item.json.lineUserId }}\"}\n  ]\n}",
+          "options": {
+            "timeout": 10000
+          }
+        },
+        "id": "create-jss-contact",
+        "name": "Upsert GHL Contact (JSS)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          944,
+          448
+        ],
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 2000,
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "eIGPaCqa6w5u56Pr",
+            "name": "GHL API Key - LINE TC"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=https://services.leadconnectorhq.com/opportunities/upsert",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Version",
+                "value": "2021-07-28"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"pipelineId\": \"249OcrNHgsq4FtnvfdwS\",\n  \"pipelineStageId\": \"c3943031-557c-4e2f-9385-77491f5e1218\",\n  \"locationId\": \"A0BcGX8PnPccQLUEzdm6\",\n  \"contactId\": \"{{ $('Upsert GHL Contact (HSS)').item.json.contact.id }}\",\n  \"name\": \"{{ $('Parse LINE Data').item.json.displayName || $('Parse LINE Data').item.json.firstName }} - LINE HSS\",\n  \"status\": \"open\",\n  \"source\": \"LINE\"\n}",
+          "options": {}
+        },
+        "id": "create-hss-opportunity",
+        "name": "Create HSS Opportunity",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1136,
+          16
+        ],
+        "notesInFlow": true,
+        "retryOnFail": true,
+        "maxTries": 2,
+        "waitBetweenTries": 2000,
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "eIGPaCqa6w5u56Pr",
+            "name": "GHL API Key - LINE TC"
+          }
+        },
+        "notes": "Pipeline: 2026 Space School → Show Interest"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=https://services.leadconnectorhq.com/opportunities/upsert",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Version",
+                "value": "2021-07-28"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"pipelineId\": \"249OcrNHgsq4FtnvfdwS\",\n  \"pipelineStageId\": \"c3943031-557c-4e2f-9385-77491f5e1218\",\n  \"locationId\": \"A0BcGX8PnPccQLUEzdm6\",\n  \"contactId\": \"{{ $('Upsert GHL Contact (JSS)').item.json.contact.id }}\",\n  \"name\": \"{{ $('Parse LINE Data').item.json.displayName || $('Parse LINE Data').item.json.firstName }} - LINE JSS\",\n  \"status\": \"open\",\n  \"source\": \"LINE\"\n}",
+          "options": {}
+        },
+        "id": "create-jss-opportunity",
+        "name": "Create JSS Opportunity",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1136,
+          368
+        ],
+        "notesInFlow": true,
+        "retryOnFail": true,
+        "maxTries": 2,
+        "waitBetweenTries": 2000,
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "eIGPaCqa6w5u56Pr",
+            "name": "GHL API Key - LINE TC"
+          }
+        },
+        "notes": "Pipeline: 2026 Space School → Show Interest"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=https://services.leadconnectorhq.com/contacts/{{ $json.contact.id }}/workflow/afb07e57-e12a-40e0-bef2-5f927bab09fc",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Version",
+                "value": "2021-07-28"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "{}",
+          "options": {}
+        },
+        "id": "trigger-hss-workflow",
+        "name": "Trigger GHL HSS Workflow",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1136,
+          160
+        ],
+        "notesInFlow": true,
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "eIGPaCqa6w5u56Pr",
+            "name": "GHL API Key - LINE TC"
+          }
+        },
+        "continueOnFail": true,
+        "notes": "Triggers: 2026 TC General HSS Webinar"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=https://services.leadconnectorhq.com/contacts/{{ $json.contact.id }}/workflow/f823b2d2-93a4-48bd-8d2f-23c061dde6b7",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Version",
+                "value": "2021-07-28"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "{}",
+          "options": {}
+        },
+        "id": "trigger-jss-workflow",
+        "name": "Trigger GHL JSS Workflow",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1136,
+          512
+        ],
+        "notesInFlow": true,
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "eIGPaCqa6w5u56Pr",
+            "name": "GHL API Key - LINE TC"
+          }
+        },
+        "continueOnFail": true,
+        "notes": "Triggers: 2026 TC General JSS Webinar"
+      },
+      {
+        "parameters": {
+          "fromEmail": "service@ivicon.com",
+          "toEmail": "service@ivicon.com",
+          "subject": "=🚀 New LINE Lead: {{ $('Parse LINE Data').item.json.displayName || $('Parse LINE Data').item.json.firstName }} ({{ $('Parse LINE Data').item.json.program }})",
+          "options": {}
+        },
+        "id": "notify-team",
+        "name": "Notify Team",
+        "type": "n8n-nodes-base.emailSend",
+        "typeVersion": 2.1,
+        "position": [
+          1344,
+          208
+        ],
+        "webhookId": "47a441e1-5a3b-4e14-9233-9d4825f53108",
+        "credentials": {
+          "smtp": {
+            "id": "KCRNxj4GBldesU4V",
+            "name": "SMTP account"
+          }
+        },
+        "continueOnFail": true
+      },
+      {
+        "parameters": {
+          "authentication": "oAuth2",
+          "resource": "file",
+          "owner": {
+            "__rl": true,
+            "value": "Portbis2",
+            "mode": "name"
+          },
+          "repository": {
+            "__rl": true,
+            "value": "Morpheus-Brain",
+            "mode": "name"
+          },
+          "filePath": "=conversations/line/{{ $now.format('yyyy-MM-dd') }}/{{ $now.toMillis() }}.md",
+          "fileContent": "=# LINE Message  **Date**: {{ $now.format('yyyy-MM-dd HH:mm:ss') }} **User**: {{ $('Get LINE Profile').item.json.displayName }} **Source**: LINE HASSE @nhe2702g  ---  {{ $json.messageText }}  ---  #line #hasse #auto-logged",
+          "commitMessage": "=auto-log: LINE msg from {{ $('Get LINE Profile').item.json.displayName }}"
+        },
+        "type": "n8n-nodes-base.github",
+        "typeVersion": 1.1,
+        "position": [
+          720,
+          336
+        ],
+        "id": "890994de-d977-42dc-932b-af5410ef56ca",
+        "name": "Create a file",
+        "webhookId": "5d6deac2-0aac-4547-98ad-676f402a3ee4",
+        "credentials": {
+          "githubOAuth2Api": {
+            "id": "4NqCmT8KvIvNJiYo",
+            "name": "GitHub OAuth2 API"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "url": "https://services.leadconnectorhq.com/contacts/search",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "locationId",
+                "value": "A0BcGX8PnPccQLUEzdm6"
+              },
+              {
+                "name": "query",
+                "value": "={{ $json.lineUserId }}"
+              }
+            ]
+          },
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Version",
+                "value": "2021-07-28"
+              }
+            ]
+          },
+          "options": {
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "name": "Search GHL Contact",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          592,
+          128
+        ],
+        "id": "abca56ee-253a-4897-b2af-bda95931d406",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "eIGPaCqa6w5u56Pr",
+            "name": "GHL API Key - LINE TC"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": ""
+            },
+            "conditions": [
+              {
+                "id": "1",
+                "leftValue": "={{ $json.contacts?.length }}",
+                "rightValue": "0",
+                "operator": {
+                  "type": "number",
+                  "operation": "gt"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "name": "Contact Exists?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          736,
+          -48
+        ],
+        "id": "7695d811-18c2-4e12-8e55-5752b3418902"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.line.me/v2/bot/message/reply",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"replyToken\": \"{{ $('Parse LINE Data').item.json.replyToken }}\",\n  \"messages\": [\n    {\n      \"type\": \"template\",\n      \"altText\": \"請問你是？\",\n      \"template\": {\n        \"type\": \"buttons\",\n        \"text\": \"你好！歡迎來到 HASSE 太空學校 \\ud83d\\ude80\\n請問你是？\",\n        \"actions\": [\n          {\n            \"type\": \"message\",\n            \"label\": \"\\ud83c\\udf93 校友\",\n            \"text\": \"我是校友\"\n          },\n          {\n            \"type\": \"message\",\n            \"label\": \"\\ud83d\\ude4b 第一次認識\",\n            \"text\": \"第一次認識\"\n          }\n        ]\n      }\n    }\n  ]\n}",
+          "options": {}
+        },
+        "name": "Reply: Welcome New User",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          944,
+          208
+        ],
+        "id": "52a0adf8-1312-4883-8779-7dac49b29100",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "vLX9ZgLfdMvCBu7G",
+            "name": "LINE Bot Token"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const item = $input.item.json;\nconst messageText = (item.messageText || '').trim();\nconst replyToken = item.replyToken;\nconst displayName = item.firstName || '';\nconst lineUserId = item.lineUserId || '';\n\nconst staticData = $getWorkflowStaticData('global');\nif (!staticData.users) staticData.users = {};\nconst userData = staticData.users[lineUserId] || {};\nconst userState = userData.state || 'new';\n\nlet messages = [];\nlet ghlAction = 'none';\nlet needsAI = false;\nlet nextState = userState;\nlet program = '';\nlet aiBody = null;\n\nfunction buttons(text, btns) {\n  return [{\n    type: 'template',\n    altText: text.substring(0, 40),\n    template: { type: 'buttons', text, actions: btns.map(b => ({ type: 'message', label: b, text: b })) }\n  }];\n}\nfunction textMsg(text) { return [{ type: 'text', text }]; }\nfunction welcomeMsg() {\n  return buttons('你好！歡迎來到 HASSE 太空學校 🚀\\n請問你是？', ['🎓 校友', '🙋 了解課程', '💬 我要問問題']);\n}\nfunction askAgeMsg() {\n  return buttons('我先確認一下孩子的年級，這樣可以給你最準確的資訊 😊\\n\\n請問目前是？', ['🎓 高中 / 大學', '📚 5–9 年級', '📒 1–4 年級']);\n}\n\nfunction buildAIBody(text, prog) {\n  const systemPrompt = '你是 HASSE 太空學校的 LINE 客服助手。請用繁體中文、友善親切的語氣回答問題。回答要簡短（不超過150字），適合手機聊天。\\n\\nHASSE 基本資訊：\\n- 成立於 2005 年，美國德州休士頓，國際知名太空教育組織\\n- 超過 15,000 名校友，來自 20+ 國家\\n- 與 NASA 太空人、科學家長期合作（非從屬關係）\\n- 亞太辦公室在台北信義路五段五號 7B12\\n\\n課程：\\n- HSS（高中/大學）：12天沉浸式，Mission Control 模擬、AI+Space 決策訓練。2026 夏季 梯次A 7/7-7/18、梯次B 7/14-7/25，每梯次限30名。台灣學員 USD 5,980（含住宿三餐保險）\\n- JSS（5-9年級）：初階太空課程，約10天。太空任務訓練、團隊合作、科學思維\\n- 科學探索營（1-4年級）\\n\\n設施：NASA 任務控制中心、中性浮力實驗室、SICSA 火星基地設計中心、萊斯大學\\n英文：基本溝通即可，不需流利\\n安全：24小時督導，含當地醫療保險\\n升學：校友錄取劍橋、牛津等，面試加分\\n\\n客服問題處理：\\n- 已報名但沒收到 Email → 告訴客戶「我們收到了，會盡快請專人回覆你」\\n- 付款/退費/改期 → 告訴客戶「我們收到了，會盡快請專人回覆你」\\n- 簽證/行前準備 → 告訴客戶「我們收到了，會盡快請專人回覆你」\\n- 其他帳務/行政問題 → 告訴客戶「我們收到了，會盡快請專人回覆你」\\n\\n如果問題超出你的知識範圍，請說「我們收到你的問題了，會盡快請專人回覆你 😊」\\n絕對不要叫客戶打電話或寫 Email，所有問題都由我們主動回覆。\\n不要編造不確定的資訊。回答末尾可以適當加 emoji。';\n  const userMsg = (prog ? '[學生類別: ' + prog + '] ' : '') + text;\n  return {\n    model: 'gpt-4o-mini',\n    messages: [\n      { role: 'system', content: systemPrompt },\n      { role: 'user', content: userMsg }\n    ],\n    max_tokens: 300,\n    temperature: 0.7\n  };\n}\n\nfunction answerFAQ(text) {\n  const t = text.toLowerCase();\n\n  if (/招生|有沒有開|還有開|有開課|開放報名|可以報名|今年有|明年有|還可以報|還能報/.test(t))\n    return '有的！2026 夏季 HSS 太空沉浸計畫正在招生中 🚀\\n\\n・梯次 A：7/7–7/18\\n・梯次 B：7/14–7/25\\n\\n每梯次限 30 名，採申請制，名額持續遞減中。\\n\\n要不要花 10 分鐘免費線上諮詢？😊';\n\n  if (/在哪|地點|location|where|休士頓|houston|美國|德州/.test(t))\n    return '課程在美國德州休士頓，NASA 詹森太空中心周邊 🚀\\n\\nHSS 為 12 天全程住宿沉浸式，進入的設施包括任務控制中心、中性浮力實驗室、SICSA 火星基地設計中心等。\\n\\n每一個場館都不是走馬看花，而是帶著任務進入，用真實資源解決問題。';\n\n  if (/什麼時候|時間|when|日期|幾月|暑假|summer|2026|2025|梯次|開課|開始|出發/.test(t))\n    return '2026 HSS 太空沉浸計畫：\\n・梯次 A：7/7–7/18\\n・梯次 B：7/14–7/25\\n\\n每梯次限 30 名，採申請制，名額持續遞減中。\\n建議盡早確認 😊';\n\n  if (/幾天|多久|多長|how long|duration|週|天數/.test(t))\n    return 'HSS 為 12 天全程住宿沉浸式課程。\\nJSS 初階太空學校約 10 天。\\n\\n詳細日程歡迎預約諮詢了解！';\n\n  if (/費用|多少錢|價格|學費|cost|fee|price|貴|投資|錢|花費|預算/.test(t))\n    return 'HSS 2026 夏季費用：\\n・台灣學員：USD 5,980（名額有限）\\n・國際標準：USD 7,999\\n\\n費用包含：12天課程、住宿、三餐、NASA設施參訪、24小時督導、結業證書、當地醫療保險\\n\\n不含：國際機票、個人零用金';\n\n  if (/住宿|住哪|hotel|住|宿舍|飯店/.test(t))\n    return '學生入住條件整潔舒適的飯店，設有專屬共同工作空間，供專案討論和課後交流。\\n\\n安全、便利是首要考量。全程有 HASSE 認證工作人員陪同 😊';\n\n  if (/安全|safe|safety|保險|危險|照顧|放心|擔心|worry/.test(t))\n    return '全程 24 小時有 HASSE 認證專業教育人員陪同督導。每個任務組有明確組長與協作角色。\\n\\nHASSE 為每位學員提供當地醫療保險，確保在美期間若有醫療需求都能妥善處理，家長可以放心 😊';\n\n  if (/英文|英語|english|語言|language|英檢/.test(t))\n    return '課程以英語進行，基本溝通能力就夠，不需要非常流利。\\n\\n歷屆學員英語程度差距很大，英語能力從來不是拒絕的理由。重要的是你能在討論中表達想法，這在課程過程中會自然發生 😊';\n\n  if (/名額|還有嗎|額滿|人數|幾個人|capacity|限/.test(t))\n    return '每梯次限 30 名，採申請制，名額持續遞減中。\\n\\n建議盡早預約諮詢確認最新名額狀況 😊';\n\n  if (/nasa參觀|遊學團|參觀|太空營|營隊|camp|tour/.test(t))\n    return '一般 NASA 遊覽：看展覽、聽導覽、拍照、離開。\\n\\nHASSE 學員：以任務組別身份進入同一批設施，帶著真實挑戰任務、工作角色和評估標準。\\n\\n場景相同，學習密度完全不同。太空營是體驗，HASSE 是訓練 🚀';\n\n  if (/hasse是什麼|什麼是hasse|hasse 是|太空學校是|介紹一下|什麼機構|什麼組織|你們是誰|你們是什麼|哪個單位|誰辦的|主辦|背景|公司|非營利|nonprofit/.test(t))\n    return 'HASSE 成立於 2005 年，總部在德州休士頓，是國際知名的太空教育組織。超過 15,000 名來自 20+ 國家的校友。\\n\\n與 NASA 太空人、科學家長期合作，以正式成員身份參與課程設計。榮獲 2024 ITC 全球商業影響力獎 🏆\\n\\n亞太辦公室設在台北，深耕亞太超過 18 年。';\n\n  if (/適合|誰可以|資格|條件|requirement|不是理工|文組|非stem|不走stem|什麼樣的學生|什麼學生/.test(t))\n    return '太空產業需要的人才橫跨科技、商業、法律、金融、設計、傳播。\\n\\nSpaceX 找的不只是火箭工程師，NASA 的工作也不只是計算軌道。不管念什麼科系，理解太空是跨領域的文明經濟，都是提早的優勢 💡';\n\n  if (/升學|大學申請|履歷|備審|推甄|college|admission|面試|牛津|劍橋|oxford|cambridge/.test(t))\n    return 'HASSE 校友成功錄取劍橋、牛津等頂尖大學。多位學員在面試中，教授主動追問 HASSE 經歷。\\n\\n牛津 Park 教授稱 HASSE 為「教育的典範轉移」。\\n\\n你寫的不是「我參加了課程」，而是「我做了這個專案，向業界專家發表成果，確認了我的方向」✨';\n\n  if (/怎麼報|報名流程|如何申請|how to apply|步驟/.test(t))\n    return '報名流程：\\n1️⃣ 預約免費 10 分鐘諮詢\\n2️⃣ 顧問幫你評估適合的課程\\n3️⃣ 確認後提交申請\\n\\n要不要我幫你安排諮詢？😊';\n\n  if (/家長|父母|parent|陪同|爸媽|一個人/.test(t))\n    return '完全可以一個人去！每屆學員都從不同地方各自前往，在課程中認識彼此是體驗的一部分。\\n\\n全程有專業團隊照顧，也會定期跟家長更新狀況。很多校友說，這裡建立的友誼是最難忘的收穫之一 😊';\n\n  if (/證書|certificate|結業|證明|校友|後續|支持/.test(t))\n    return '完成課程後頒發 HASSE 結業證書，並進入橫跨 20+ 國家的校友網絡。\\n\\n網絡裡有 SpaceX 工程師、Forbes 30 Under 30 創業者、JAXA 工程師、劍橋和 UC Berkeley 研究者。課程結束是進入社群的起點 🌍';\n\n  if (/ignis|框架|方法|學習方式|怎麼學/.test(t))\n    return 'IGNIS 是 HASSE 的三階段學習框架：\\n\\n🔥 Ignition（點燃）— 與太空科學家對話，確立你的方向\\n🔄 Iteration（迭代）— 實際操作、失敗、調整、再做一次\\n🎯 Integration（整合）— 向業界專家發表真實成果\\n\\n不是被動接收知識，而是帶著問題去探索 💡';\n\n  if (/ai|人工智慧|工作坊|workshop|程式/.test(t))\n    return 'AI 工作坊是 HSS 課程核心部分，不需要會寫程式！\\n\\n用 AI 工具解決太空任務中的真實問題：任務規劃、棲息地設計、情境建構等。\\n\\n學的不是工具操作，是用 AI 解決問題的思考方式 🤖';\n\n  if (/老師|師資|講師|教授|instructor|teacher|誰教/.test(t))\n    return '師資包括 NASA 太空人、世界知名教授、參與重要太空任務的科學家與工程師。\\n\\n他們不只是演講嘉賓，而是實際參與課程設計與執行。Roland Nedelkovich 先生曾兩度獲 NASA「銀色史努比獎」🏅';\n\n  if (/(hss|jss).*(差|不同|區別|比較)|(差|不同|區別|比較).*(hss|jss)|初階.*高階|高階.*初階/.test(t))\n    return 'JSS 是點燃 🔥 HSS 是定向 🎯\\n\\nJSS（5-9年級）：打開學習興趣，發現好奇心。由老師主導，學生跟著任務走。\\n\\nHSS（高中大學）：釐清未來方向，自己主導學習，向業界專家發表成果。\\n\\n兩個設計邏輯完全不同的課程！';\n\n  if (/太空經濟|未來|前景|就業|職涯|career|trillion|兆/.test(t))\n    return '2040 年全球太空經濟規模預計超過一兆美元 🚀\\n\\n推動的不只是火箭工程師，而是橫跨科技、商業、法律、政策、建築、醫療、傳播的跨領域人才。\\n\\n太空提供的不是一個答案，而是一個夠大的格局，讓你找到自己的位置。';\n\n  if (/內向|害羞|shy|introvert|不敢/.test(t))\n    return '結構清晰的小組任務環境，對內向的學生往往比開放式社交更友善 😊\\n\\n每位學生都有明確角色，互動建立在共同解決問題上，不是社交壓力。\\n\\n許多內向學生反而在這裡找到自信，因為他們的思考和貢獻在這裡是被看見的 ✨';\n\n  if (/好玩|fun|有趣|好不好玩/.test(t))\n    return '學生一致的回答是：好玩！🎉\\n\\n但不只是好玩——課程目的是引導學生開始思考未來，鼓勵大膽的夢想。我們稱之為「登月思維」🌙\\n\\n太空學校提供不同的視角，讓學生重新看見自己真正在意的事。';\n\n  if (/改變|收穫|學到|回來|之後|成長/.test(t))\n    return '最常見的改變不是知識點，而是對學習的態度 ✨\\n\\n學生開始知道自己對什麼感興趣、願意主動思考未來、相信自己有能力做到原本覺得遙遠的事。\\n\\n高中生：釐清大學方向、面試有真實經歷、建立國際連結。';\n\n  if (/機場|接送|接機|airport|iah|transfer/.test(t))\n    return '可以安排！從休士頓 IAH 機場到飯店的專人接送，單程約 USD 150-250。\\n\\n若有其他學員相近時間抵達可共乘分攤。需要安排請聯繫 HASSE 亞太辦公室 😊';\n\n  if (/聯絡|電話|email|地址|辦公室|contact/.test(t))\n    return 'HASSE 亞太辦公室 🏢\\n\\n📍 台北市信義路五段五號 7B12\\n💬 LINE @nhe2702g\\n🌐 spaceschool.org\\n\\n有任何問題都可以直接在這裡問，我們會盡快回覆 😊';\n\n  if (/成績|考試|分數|grade|score|學業/.test(t))\n    return '課程目標不是提升考試成績，而是解決更根本的問題：讓學生知道自己為什麼要學習 💡\\n\\n一旦找到真正投入的領域，學習動力會從根本改變。這是 IGNIS 框架的核心：先點燃熱情，再建立能力 🔥';\n\n  if (/遊學|比較|選擇|哪種|touring|schooling/.test(t))\n    return 'HASSE 把海外學習分三個層次：\\n\\n🚌 Touring（遊覽型）— 看了很多，深度有限\\n🏫 Schooling（名校型）— 品牌知名，收穫因人而異\\n🔬 Deep Learning（深度學習）— HASSE 屬於這類\\n\\n選擇什麼學習深度，比選擇去哪裡更重要！';\n\n  if (/nasa.*關係|關係.*nasa/.test(t))\n    return 'HASSE 與 NASA 無直接從屬關係，但自創立以來，大量 NASA 太空人、科學家與工程師以正式成員身份參與課程。\\n\\nHASSE 的貢獻曾獲兩大 NASA 太空中心執行長公開肯定。\\n\\n「HASSE 太空學校是一個非常好的課程，我強力推薦。」— NASA 太空人 Leroy Chiao 🧑‍🚀';\n\n  return null;\n}\n\nfunction detectAge(text) {\n  const t = text.toLowerCase();\n  const gradeMatch = t.match(/(\\d+)\\s*年級/);\n  if (gradeMatch) {\n    const grade = parseInt(gradeMatch[1]);\n    if (grade >= 1 && grade <= 4) return 'young';\n    if (grade >= 5 && grade <= 9) return 'jss';\n    if (grade >= 10) return 'hss';\n  }\n  const ageMatch = t.match(/(\\d+)\\s*歲/);\n  if (ageMatch) {\n    const age = parseInt(ageMatch[1]);\n    if (age <= 10) return 'young';\n    if (age >= 11 && age <= 14) return 'jss';\n    if (age >= 15) return 'hss';\n  }\n  if (/小一|小二|小三|小四|一年級|二年級|三年級|四年級|低年級|中年級/.test(t)) return 'young';\n  if (/小五|小六|五年級|六年級|高年級|國一|國二|國三|七年級|八年級|九年級|初一|初二|初三|國中/.test(t)) return 'jss';\n  if (/高一|高二|高三|十年級|十一年級|十二年級|高中|大一|大二|大三|大四|大學|college|university/.test(t)) return 'hss';\n  return null;\n}\n\nfunction detectIntent(text) {\n  const t = text.toLowerCase();\n  if (/已.*(報名|繳|付款|申請)|沒.*收到|收不到|退費|退款|取消|改期|簽證|行前|出發前|已經報名|已報名|已繳費|已付款|付了|匯了/.test(t)) return 'cs_existing';\n  if (/報名|申請|參加|註冊|enroll|register|sign.?up|招生/.test(t)) return 'want_register';\n  if (/費用|多少錢|價格|學費|cost|fee|price/.test(t)) return 'ask_fee';\n  if (/諮詢|顧問|consultant|consult/.test(t)) return 'want_consult';\n  if (/課程|內容|介紹|了解|what|course/.test(t)) return 'ask_info';\n  if (/校友|alumni|畢業/.test(t)) return 'alumni';\n  if (/hss/i.test(t) && !/jss/i.test(t)) return 'hss';\n  if (/jss/i.test(t) && !/hss/i.test(t)) return 'jss';\n  if (/說明會|webinar|講座/.test(t)) return 'webinar';\n  if (/你好|hi|hello|嗨|哈囉/.test(t)) return 'greeting';\n  return 'unknown';\n}\n\n// === State Machine ===\n\nif (userState === 'alumni_wait') {\n  messages = textMsg('收到！你參加的是「' + messageText + '」對嗎？\\n\\n謝謝你的資訊 😊 我已經幫你記錄了，我們團隊會盡快跟你聯繫！');\n  ghlAction = 'alumni';\n  nextState = 'done';\n\n} else if (userState === 'faq_need_age') {\n  let handled = true;\n  switch(messageText) {\n    case '🎓 高中 / 大學': case '高中 / 大學': case '高中/大學':\n      program = 'HSS'; break;\n    case '📚 5–9 年級': case '5–9 年級': case '5-9 年級':\n      program = 'JSS'; break;\n    case '📒 1–4 年級': case '1–4 年級': case '1-4 年級':\n      messages = textMsg('1–4 年級適合我們的「科學探索營」🔬\\n\\n我請專人跟你聯繫，幫你了解詳細內容 😊\\n請稍等一下～');\n      ghlAction = 'young_student'; nextState = 'done'; handled = false; break;\n    default: {\n      const ag = detectAge(messageText);\n      if (ag === 'hss') { program = 'HSS'; }\n      else if (ag === 'jss') { program = 'JSS'; }\n      else if (ag === 'young') {\n        messages = textMsg('1–4 年級適合我們的「科學探索營」🔬\\n\\n我請專人跟你聯繫，幫你了解詳細內容 😊\\n請稍等一下～');\n        ghlAction = 'young_student'; nextState = 'done'; handled = false;\n      } else {\n        messages = askAgeMsg();\n        nextState = 'faq_need_age'; handled = false;\n      }\n      break;\n    }\n  }\n  if (handled && program) {\n    const pName = program === 'HSS' ? '高階太空學校 (HSS)' : '初階太空學校 (JSS)';\n    messages = textMsg('了解！' + pName + ' 😊\\n\\n請直接打你的問題，我會盡量回答！\\n答不了的我會請專人幫你！');\n    nextState = 'done';\n  }\n\n} else if (userState === 'choose_method') {\n  switch(messageText) {\n    case '💬 LINE 通話': case 'LINE 通話':\n      messages = textMsg('好的！方便什麼時候？我請顧問直接 LINE 你 😊');\n      ghlAction = 'hot_line'; nextState = 'done'; break;\n    case '📹 Zoom': case 'Zoom':\n      const zUrl = (userData.program === 'HSS') ? 'https://tcghss1.spaceschool.org' : 'https://tcgjss1.spaceschool.org';\n      messages = textMsg('好的！這裡可以直接選時間 👉\\n' + zUrl + '\\n\\n預約完成後，我們會先了解學生背景，再給具體建議 😊');\n      ghlAction = 'hot_zoom'; nextState = 'done'; break;\n    default:\n      messages = buttons('請選擇你比較方便的方式 😊', ['💬 LINE 通話', '📹 Zoom']);\n      nextState = 'choose_method'; break;\n  }\n\n} else if (userState === 'showed_info') {\n  switch(messageText) {\n    case '好啊 👋': case '好啊':\n      messages = buttons('太好了！你比較方便哪種方式？', ['💬 LINE 通話', '📹 Zoom']);\n      nextState = 'choose_method'; break;\n    case '先想想':\n      messages = textMsg('沒問題！有任何問題隨時問我們 😊\\n\\n這裡有招生介紹可以參考 👉\\nhttps://tcghss1.spaceschool.org/');\n      ghlAction = 'warm'; nextState = 'done'; break;\n    default: {\n      const faq = answerFAQ(messageText);\n      if (faq) {\n        messages = textMsg(faq);\n        nextState = 'done';\n      } else {\n        needsAI = true;\n        aiBody = buildAIBody(messageText, userData.program || program);\n        ghlAction = 'cs_question';\n        nextState = 'done';\n      }\n      break;\n    }\n  }\n\n} else if (userState === 'cs_wait' || userState === 'done') {\n  const faqAnswer = answerFAQ(messageText);\n  if (faqAnswer) {\n    messages = textMsg(faqAnswer);\n    nextState = 'done';\n  } else {\n    const intent = detectIntent(messageText);\n    if (intent === 'cs_existing') {\n      needsAI = true;\n      aiBody = buildAIBody(messageText, userData.program || '');\n      ghlAction = 'cs_question';\n      nextState = 'done';\n    } else if (intent === 'want_register' || intent === 'want_consult') {\n      messages = buttons('想報名或諮詢都可以！你比較方便哪種方式？', ['💬 LINE 通話', '📹 Zoom']);\n      nextState = 'choose_method';\n    } else if (intent === 'ask_fee') {\n      messages = buttons('HSS 2026 費用：\\n・台灣學員：USD 5,980\\n・國際：USD 7,999\\n\\n含課程、住宿、三餐、保險等\\n不含機票\\n\\n想了解更多？', ['好啊 👋', '先想想']);\n      nextState = 'showed_info';\n    } else if (intent === 'webinar' || intent === 'ask_info') {\n      messages = textMsg('這裡有完整介紹 👉\\nhttps://tcghss.spaceschool.org/webinar\\n\\n有其他問題也可以繼續問我 😊');\n      nextState = 'done';\n    } else if (intent === 'greeting') {\n      messages = textMsg('你好！有什麼問題都可以問我 😊');\n      nextState = 'done';\n    } else {\n      const ageResult = detectAge(messageText);\n      if (ageResult === 'young') {\n        messages = textMsg('1–4 年級適合我們的「科學探索營」🔬\\n\\n我請專人跟你聯繫，幫你了解詳細內容 😊\\n請稍等一下～');\n        ghlAction = 'young_student'; nextState = 'done';\n      } else if (ageResult === 'jss') {\n        messages = buttons('根據年級，推薦 JSS 初階太空學校 😊\\n\\n・太空任務基礎訓練\\n・團隊合作與問題解決\\n・建立科學思維與國際視野\\n\\n要不要花 10 分鐘免費線上諮詢？', ['好啊 👋', '先想想']);\n        program = 'JSS'; nextState = 'showed_info';\n      } else if (ageResult === 'hss') {\n        messages = buttons('根據年級，推薦 HSS 高階太空學校 😊\\n\\n・Mission Control 模擬\\n・AI + Space 決策訓練\\n・與 NASA / 產業環境接觸\\n\\n2026 費用 USD 5,980（台灣學員）\\n\\n要不要花 10 分鐘免費線上諮詢？', ['好啊 👋', '先想想']);\n        program = 'HSS'; nextState = 'showed_info';\n      } else {\n        needsAI = true;\n        aiBody = buildAIBody(messageText, userData.program || '');\n        ghlAction = 'cs_question';\n        nextState = 'done';\n      }\n    }\n  }\n\n} else {\n  let handled = true;\n  switch(messageText) {\n    case '🎓 校友': case '校友':\n      messages = textMsg('歡迎回來！🎓\\n請問你是什麼時候參加的什麼課程？\\n（例如：2024 HSS）');\n      nextState = 'alumni_wait'; break;\n    case '🙋 了解課程': case '了解課程': case '🙋 第一次認識': case '第一次認識':\n      messages = askAgeMsg(); nextState = 'ask_age'; break;\n    case '💬 我要問問題': case '我要問問題': case '💬 常見問題': case '常見問題': case '💬 我有問題': case '我有問題':\n      if (userData.program) {\n        messages = textMsg('沒問題！請直接打你的問題，我會盡量回答 😊\\n答不了的我會請專人幫你！');\n        nextState = 'done';\n      } else {\n        messages = askAgeMsg();\n        nextState = 'faq_need_age';\n      }\n      break;\n    case '🎓 高中 / 大學': case '高中 / 大學': case '高中/大學': case '14 歲以上':\n      messages = buttons('HSS 高階太空學校是高強度的任務訓練環境，接近真實產業：\\n\\n・Mission Control 模擬\\n・AI + Space 決策訓練\\n・與 NASA / 產業環境接觸\\n\\n2026 夏季費用約 USD 5,980（台灣學員，名額有限）\\n\\n如果有興趣，我可以幫你看看適不適合 😊\\n要不要花 10 分鐘免費線上諮詢？', ['好啊 👋', '先想想']);\n      program = 'HSS'; nextState = 'showed_info'; break;\n    case '📚 5–9 年級': case '5–9 年級': case '5-9 年級': case '11–14 歲':\n      messages = buttons('JSS 初階太空學校是為 5–9 年級設計的課程：\\n\\n・太空任務基礎訓練\\n・團隊合作與問題解決\\n・建立科學思維與國際視野\\n\\n如果有興趣，我可以幫你看看適不適合 😊\\n要不要花 10 分鐘免費線上諮詢？', ['好啊 👋', '先想想']);\n      program = 'JSS'; nextState = 'showed_info'; break;\n    case '📒 1–4 年級': case '1–4 年級': case '1-4 年級':\n      messages = textMsg('1–4 年級適合我們的「科學探索營」🔬\\n\\n我請專人跟你聯繫，幫你了解詳細內容 😊\\n請稍等一下～');\n      ghlAction = 'young_student'; nextState = 'done'; break;\n    case '好啊 👋': case '好啊':\n      messages = buttons('太好了！你比較方便哪種方式？', ['💬 LINE 通話', '📹 Zoom']);\n      nextState = 'choose_method'; break;\n    case '💬 LINE 通話':\n      messages = textMsg('好的！方便什麼時候？我請顧問直接 LINE 你 😊');\n      ghlAction = 'hot_line'; nextState = 'done'; break;\n    case '📹 Zoom': {\n      const zoomUrl = (userData.program === 'HSS') ? 'https://tcghss1.spaceschool.org' : 'https://tcgjss1.spaceschool.org';\n      messages = textMsg('好的！這裡可以直接選時間 👉\\n' + zoomUrl + '\\n\\n預約完成後，我們會先了解學生背景，再給具體建議 😊');\n      ghlAction = 'hot_zoom'; nextState = 'done'; break;\n    }\n    case '先想想':\n      messages = textMsg('沒問題！有任何問題隨時問我們 😊\\n\\n這裡有招生介紹可以參考 👉\\nhttps://tcghss1.spaceschool.org/');\n      ghlAction = 'warm'; nextState = 'done'; break;\n    default: handled = false; break;\n  }\n\n  if (!handled) {\n    const faqAnswer = answerFAQ(messageText);\n    if (faqAnswer) {\n      messages = textMsg(faqAnswer);\n      nextState = 'done';\n    } else {\n      const intent = detectIntent(messageText);\n      switch(intent) {\n        case 'cs_existing':\n          needsAI = true;\n          aiBody = buildAIBody(messageText, userData.program || '');\n          ghlAction = 'cs_question';\n          nextState = 'done'; break;\n        case 'want_register': case 'want_consult':\n          messages = askAgeMsg(); nextState = 'ask_age'; break;\n        case 'ask_fee':\n          messages = buttons('HSS 2026 費用：\\n・台灣學員：USD 5,980\\n・國際：USD 7,999\\n\\n含課程、住宿、三餐、保險等\\n不含機票\\n\\n想了解更多？', ['好啊 👋', '先想想']);\n          nextState = 'showed_info'; break;\n        case 'ask_info':\n          messages = askAgeMsg(); nextState = 'ask_age'; break;\n        case 'alumni':\n          messages = textMsg('歡迎回來！🎓\\n請問你是什麼時候參加的什麼課程？\\n（例如：2024 HSS）');\n          nextState = 'alumni_wait'; break;\n        case 'hss':\n          messages = buttons('HSS 是高強度的任務訓練環境：\\n\\n・Mission Control 模擬\\n・AI + Space 決策訓練\\n・與 NASA / 產業環境接觸\\n\\n2026 費用 USD 5,980（台灣學員）\\n\\n要不要花 10 分鐘免費線上諮詢？', ['好啊 👋', '先想想']);\n          program = 'HSS'; nextState = 'showed_info'; break;\n        case 'jss':\n          messages = buttons('JSS 初階太空學校（5-9年級）：\\n\\n・太空任務基礎訓練\\n・團隊合作與問題解決\\n・建立科學思維與國際視野\\n\\n要不要花 10 分鐘免費線上諮詢？', ['好啊 👋', '先想想']);\n          program = 'JSS'; nextState = 'showed_info'; break;\n        case 'webinar':\n          messages = textMsg('這裡可以報名說明會 👉\\nhttps://tcghss.spaceschool.org/webinar\\n\\n有問題隨時問我們 😊');\n          nextState = 'done'; break;\n        case 'greeting':\n          messages = welcomeMsg(); nextState = 'welcome'; break;\n        default: {\n          const ageResult2 = detectAge(messageText);\n          if (ageResult2 === 'young') {\n            messages = textMsg('1–4 年級適合我們的「科學探索營」🔬\\n\\n我請專人跟你聯繫，幫你了解詳細內容 😊\\n請稍等一下～');\n            ghlAction = 'young_student'; nextState = 'done';\n          } else if (ageResult2 === 'jss') {\n            messages = buttons('根據年級，推薦 JSS 初階太空學校 😊\\n\\n・太空任務基礎訓練\\n・團隊合作與問題解決\\n・建立科學思維與國際視野\\n\\n要不要花 10 分鐘免費線上諮詢？', ['好啊 👋', '先想想']);\n            program = 'JSS'; nextState = 'showed_info';\n          } else if (ageResult2 === 'hss') {\n            messages = buttons('根據年級，推薦 HSS 高階太空學校 😊\\n\\n・Mission Control 模擬\\n・AI + Space 決策訓練\\n・與 NASA / 產業環境接觸\\n\\n2026 費用 USD 5,980（台灣學員）\\n\\n要不要花 10 分鐘免費線上諮詢？', ['好啊 👋', '先想想']);\n            program = 'HSS'; nextState = 'showed_info';\n          } else {\n            needsAI = true;\n            aiBody = buildAIBody(messageText, userData.program || '');\n            ghlAction = 'cs_question';\n            nextState = 'done';\n          }\n          break;\n        }\n      }\n    }\n  }\n}\n\nstaticData.users[lineUserId] = { state: nextState, program: program || userData.program || '', updatedAt: Date.now() };\nreturn { replyToken, messages, ghlAction, needsAI, aiBody, messageText, displayName, lineUserId, state: nextState, program: program || userData.program || '' };",
+          "mode": "runOnceForEachItem"
+        },
+        "name": "Chatbot Router",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          792,
+          320
+        ],
+        "id": "chatbot-router-001"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.line.me/v2/bot/message/reply",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ replyToken: $json.replyToken, messages: $json.messages }) }}",
+          "options": {}
+        },
+        "name": "Send LINE Reply",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1672,
+          320
+        ],
+        "id": "send-reply-001",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "vLX9ZgLfdMvCBu7G",
+            "name": "LINE Bot Token"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": ""
+            },
+            "conditions": [
+              {
+                "id": "1",
+                "leftValue": "={{ $json.needsAI }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "name": "Needs AI?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1012,
+          320
+        ],
+        "id": "needs-ai-check"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.openai.com/v1/chat/completions",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "Bearer {{OPENAI_API_KEY}}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json.aiBody) }}",
+          "options": {
+            "timeout": 10000
+          }
+        },
+        "name": "Ask OpenAI",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1232,
+          220
+        ],
+        "id": "ask-openai-001"
+      },
+      {
+        "parameters": {
+          "jsCode": "const aiResponse = $input.item.json.choices?.[0]?.message?.content || '這個問題我幫你轉給專人，會盡快回覆你 😊';\nconst prev = $('Chatbot Router').first().json;\n\nreturn {\n  replyToken: prev.replyToken,\n  messages: [{ type: 'text', text: aiResponse }],\n  ghlAction: prev.ghlAction,\n  messageText: prev.messageText,\n  displayName: prev.displayName,\n  lineUserId: prev.lineUserId,\n  state: prev.state,\n  program: prev.program\n};",
+          "mode": "runOnceForEachItem"
+        },
+        "name": "Format AI Reply",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1452,
+          220
+        ],
+        "id": "format-ai-001"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": ""
+            },
+            "conditions": [
+              {
+                "id": "1",
+                "leftValue": "={{ $('Chatbot Router').first().json.ghlAction }}",
+                "rightValue": "none",
+                "operator": {
+                  "type": "string",
+                  "operation": "notEquals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "name": "Save to GHL?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1892,
+          320
+        ],
+        "id": "save-ghl-if"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://services.leadconnectorhq.com/contacts/upsert",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Version",
+                "value": "2021-07-28"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({\n  locationId: 'A0BcGX8PnPccQLUEzdm6',\n  firstName: $('Chatbot Router').first().json.displayName,\n  source: 'LINE Chatbot',\n  tags: [\n    'LINE',\n    $('Chatbot Router').first().json.ghlAction === 'cs_question' ? '待回覆' :\n    $('Chatbot Router').first().json.ghlAction === 'cs_existing' ? '待回覆' :\n    $('Chatbot Router').first().json.ghlAction === 'hot_line' ? 'LINE諮詢' :\n    $('Chatbot Router').first().json.ghlAction === 'hot_zoom' ? 'Zoom諮詢' :\n    $('Chatbot Router').first().json.ghlAction === 'warm' ? '觀望中' :\n    $('Chatbot Router').first().json.ghlAction === 'alumni' ? '校友' :\n    $('Chatbot Router').first().json.ghlAction === 'young_student' ? '科學探索營' :\n    'LINE'\n  ].filter(Boolean),\n  customFields: [\n    { id: 'VHBNkQBpsivixjZAzrMd', field_value: $('Chatbot Router').first().json.lineUserId },\n    { id: 'qN47bb52eT0ky7wlebrR', field_value: $('Chatbot Router').first().json.state || 'done' }\n  ]\n}) }}",
+          "options": {
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "name": "GHL Upsert Contact",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2112,
+          220
+        ],
+        "id": "ghl-upsert-new",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "eIGPaCqa6w5u56Pr",
+            "name": "GHL API Key - LINE TC"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=https://services.leadconnectorhq.com/contacts/{{ $json.contact?.id }}/notes",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Version",
+                "value": "2021-07-28"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({\n  body: '📱 LINE 訊息\\n' +\n    '動作: ' + $('Chatbot Router').first().json.ghlAction + '\\n' +\n    '問題: ' + $('Chatbot Router').first().json.messageText + '\\n' +\n    '課程: ' + ($('Chatbot Router').first().json.program || '未選擇') + '\\n' +\n    '時間: ' + new Date().toISOString()\n}) }}",
+          "options": {
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "name": "GHL Add Note",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2332,
+          220
+        ],
+        "id": "ghl-note-new",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "eIGPaCqa6w5u56Pr",
+            "name": "GHL API Key - LINE TC"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Webhook1": {
+        "main": [
+          [
+            {
+              "node": "Get LINE Profile",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get LINE Profile": {
+        "main": [
+          [
+            {
+              "node": "Parse LINE Data",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse LINE Data": {
+        "main": [
+          [
+            {
+              "node": "Chatbot Router",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "HSS or JSS?": {
+        "main": [
+          [
+            {
+              "node": "Upsert GHL Contact (HSS)",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Upsert GHL Contact (JSS)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Upsert GHL Contact (HSS)": {
+        "main": [
+          [
+            {
+              "node": "Create HSS Opportunity",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Trigger GHL HSS Workflow",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Upsert GHL Contact (JSS)": {
+        "main": [
+          [
+            {
+              "node": "Create JSS Opportunity",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Trigger GHL JSS Workflow",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Create HSS Opportunity": {
+        "main": [
+          [
+            {
+              "node": "Notify Team",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Create JSS Opportunity": {
+        "main": [
+          []
+        ]
+      },
+      "Chatbot Router": {
+        "main": [
+          [
+            {
+              "node": "Needs AI?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Needs AI?": {
+        "main": [
+          [
+            {
+              "node": "Ask OpenAI",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Send LINE Reply",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Ask OpenAI": {
+        "main": [
+          [
+            {
+              "node": "Format AI Reply",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format AI Reply": {
+        "main": [
+          [
+            {
+              "node": "Send LINE Reply",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send LINE Reply": {
+        "main": [
+          [
+            {
+              "node": "Save to GHL?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Save to GHL?": {
+        "main": [
+          [
+            {
+              "node": "GHL Upsert Contact",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          []
+        ]
+      },
+      "GHL Upsert Contact": {
+        "main": [
+          [
+            {
+              "node": "GHL Add Note",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "James Liu",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-04-08T15:26:57.347Z",
+        "id": 133,
+        "workflowId": "fFnV9UqWZ4q4CtjP",
+        "versionId": "bfbd5fbf-e2d8-4d26-9649-b84024e5f593",
+        "event": "activated",
+        "userId": "cf28b4f6-5a8e-4b53-805b-5e9f20d14f6d"
+      },
+      {
+        "createdAt": "2026-04-08T15:26:58.645Z",
+        "id": 135,
+        "workflowId": "fFnV9UqWZ4q4CtjP",
+        "versionId": "bfbd5fbf-e2d8-4d26-9649-b84024e5f593",
+        "event": "activated",
+        "userId": "cf28b4f6-5a8e-4b53-805b-5e9f20d14f6d"
+      },
+      {
+        "createdAt": "2026-04-08T15:26:57.209Z",
+        "id": 132,
+        "workflowId": "fFnV9UqWZ4q4CtjP",
+        "versionId": "bfbd5fbf-e2d8-4d26-9649-b84024e5f593",
+        "event": "deactivated",
+        "userId": "cf28b4f6-5a8e-4b53-805b-5e9f20d14f6d"
+      },
+      {
+        "createdAt": "2026-04-08T15:26:57.971Z",
+        "id": 134,
+        "workflowId": "fFnV9UqWZ4q4CtjP",
+        "versionId": "bfbd5fbf-e2d8-4d26-9649-b84024e5f593",
+        "event": "deactivated",
+        "userId": "cf28b4f6-5a8e-4b53-805b-5e9f20d14f6d"
+      }
+    ]
+  }
+}
